@@ -2,6 +2,7 @@
 #![feature(type_alias_impl_trait)]
 
 
+pub mod network;
 /*
 The macro makes a some object to have a static lifetime
 which means it will live as long as the program

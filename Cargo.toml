@@ -70,10 +70,11 @@ static_cell = { version = "2.1.0", features = ["nightly"] }
 esp-bootloader-esp-idf = "0.1.0"
 embassy-futures = "0.1.1"
 embassy-sync = "0.7.0"
-cfg-if = "1.0.0"
+cfg-if = "1.0.1"
 edge-dhcp = {version = "0.6.0", features = ["defmt"]}
 edge-nal =  "0.5.0"
 edge-nal-embassy = {version = "0.6.0", features = ["defmt"]}
+picoserve = {version = "0.16.0", features = ["defmt","embassy"]}
 
 [profile.dev]
 # Rust debug is too slow.
