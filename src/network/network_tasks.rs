@@ -5,7 +5,7 @@ use esp_wifi::wifi::{AccessPointConfiguration, Configuration, WifiController, Wi
 
 
 #[embassy_executor::task]
-pub async fn connection(mut controller: WifiController<'static>) {
+pub async fn connection(mut controller: WifiController<'static>,ssid:&'static str) {
     println!("start connection task");
     println!("Device capabilities: {:?}", controller.capabilities());
     loop {
@@ -19,7 +19,7 @@ pub async fn connection(mut controller: WifiController<'static>) {
         }
         if !matches!(controller.is_started(), Ok(true)) {
             let client_config = Configuration::AccessPoint(AccessPointConfiguration {
-                ssid: "esp-wifi".try_into().unwrap(),
+                ssid: ssid.try_into().unwrap(),
                 ..Default::default()
             });
             controller.set_configuration(&client_config).unwrap();

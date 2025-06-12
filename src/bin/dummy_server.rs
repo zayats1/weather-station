@@ -45,6 +45,7 @@ impl AppBuilder for AppProps {
 }
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
+const SSID:&'static str = "dummy-server";
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner)  {
@@ -87,7 +88,7 @@ async fn main(spawner: Spawner)  {
         seed,
     );
 
-    spawner.spawn(connection(controller)).ok();
+    spawner.spawn(connection(controller,SSID)).ok();
     spawner.spawn(net_task(runner)).ok();
     spawner.spawn(run_dhcp(stack, gw_ip_addr_str)).ok();
 
