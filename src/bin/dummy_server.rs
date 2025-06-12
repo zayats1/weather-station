@@ -15,6 +15,7 @@
 use core::{net::Ipv4Addr, str::FromStr};
 
 use embassy_executor::Spawner;
+use embassy_net::Ipv4Cidr;
 use embassy_net::{
     StackResources, StaticConfigV4
 };
