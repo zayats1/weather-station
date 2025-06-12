@@ -22,7 +22,7 @@ use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
 use weather_station::make_static;
-use weather_station::server::server::{web_task, AppProps};
+use weather_station::http_server::server::{web_task, AppProps};
 
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");

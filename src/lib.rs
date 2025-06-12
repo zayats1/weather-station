@@ -3,7 +3,7 @@
 #![feature(impl_trait_in_assoc_type)]
 
 pub mod network;
-pub mod server;
+pub mod http_server;
 /*
 The macro makes a some object to have a static lifetime
 which means it will live as long as the program
