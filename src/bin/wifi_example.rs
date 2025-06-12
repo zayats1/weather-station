@@ -13,7 +13,7 @@
 #![no_main]
 
 use core::{net::Ipv4Addr, str::FromStr};
-
+use weather_station::make_static;
 use embassy_executor::Spawner;
 use embassy_net::{
     IpListenEndpoint, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4, tcp::TcpSocket,
@@ -32,15 +32,7 @@ use esp_wifi::{
 
 
 
-// When you are okay with using a nightly compiler it's better to use https://docs.rs/static_cell/2.1.0/static_cell/macro.make_static.html
-macro_rules! mk_static {
-    ($t:ty,$val:expr) => {{
-        static STATIC_CELL: static_cell::StaticCell<$t> = static_cell::StaticCell::new();
-        #[deny(unused_attributes)]
-        let x = STATIC_CELL.uninit().write(($val));
-        x
-    }};
-}
+
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 
@@ -54,7 +46,7 @@ async fn main(spawner: Spawner) -> ! {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
 
-    let esp_wifi_ctrl = &*mk_static!(
+    let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
         init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
     );
@@ -81,7 +73,7 @@ async fn main(spawner: Spawner) -> ! {
     let (stack, runner) = embassy_net::new(
         device,
         config,
-        mk_static!(StackResources<3>, StackResources::<3>::new()),
+        make_static!(StackResources<3>, StackResources::<3>::new()),
         seed,
     );
 
@@ -166,6 +158,7 @@ async fn main(spawner: Spawner) -> ! {
             ",
             )
             .await;
+       
         if let Err(e) = r {
             println!("write error: {:?}", e);
         }
