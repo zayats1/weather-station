@@ -9,7 +9,7 @@ use embassy_net::Ipv4Cidr;
 use embassy_net::{
     StackResources, StaticConfigV4
 };
-use picoserve::{routing::get, AppBuilder, AppRouter};
+use picoserve::{AppBuilder, AppRouter};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
@@ -22,17 +22,8 @@ use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
 use weather_station::make_static;
+use weather_station::server::server::{web_task, AppProps};
 
-
-struct AppProps;
-
-impl AppBuilder for AppProps {
-    type PathRouter = impl picoserve::routing::PathRouter;
-
-    fn build_app(self) -> picoserve::Router<Self::PathRouter> {
-        picoserve::Router::new().route("/", get(|| async move { "Hello World" }))
-    }
-}
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 
@@ -115,26 +106,3 @@ async fn main(spawner: Spawner)  {
 }
 
 
-#[embassy_executor::task]
-async fn web_task(
-    stack: embassy_net::Stack<'static>,
-    app: &'static AppRouter<AppProps>,
-    config: &'static picoserve::Config<Duration>,
-) -> ! {
-    let port = 80;
-    let mut tcp_rx_buffer = [0; 1024];
-    let mut tcp_tx_buffer = [0; 1024];
-    let mut http_buffer = [0; 2048];
-
-    picoserve::listen_and_serve(
-        0,
-        app,
-        config,
-        stack,
-        port,
-        &mut tcp_rx_buffer,
-        &mut tcp_tx_buffer,
-        &mut http_buffer,
-    )
-    .await
-}

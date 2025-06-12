@@ -1,8 +1,9 @@
 #![no_std]
 #![feature(type_alias_impl_trait)]
-
+#![feature(impl_trait_in_assoc_type)]
 
 pub mod network;
+pub mod server;
 /*
 The macro makes a some object to have a static lifetime
 which means it will live as long as the program
