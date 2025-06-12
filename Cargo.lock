@@ -1758,6 +1758,8 @@ dependencies = [
  "esp-wifi",
  "heapless",
  "picoserve",
+ "serde",
+ "serde-json-core",
  "smoltcp",
  "static_cell",
 ]

@@ -7,7 +7,7 @@
 //! On Android you might need to choose _Keep Accesspoint_ when it tells you the WiFi has no internet connection, Chrome might not want to load the URL - you can use a shell and try `curl` and `ping`
 
 //% FEATURES: embassy esp-wifi esp-wifi/wifi esp-hal/unstable
-//% CHIPS: esp32 esp32s2 esp32s3 esp32c2 esp32c3 esp32c6
+
 
 #![no_std]
 #![no_main]

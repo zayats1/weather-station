@@ -1,6 +1,6 @@
 [package]
 edition = "2024"
-name    = "weather-station"
+name = "weather-station"
 version = "0.1.0"
 
 [[bin]]
@@ -71,23 +71,27 @@ esp-bootloader-esp-idf = "0.1.0"
 embassy-futures = "0.1.1"
 embassy-sync = "0.7.0"
 cfg-if = "1.0.1"
-edge-dhcp = {version = "0.6.0", features = ["defmt"]}
-edge-nal =  "0.5.0"
-edge-nal-embassy = {version = "0.6.0", features = ["defmt"]}
-picoserve = {version = "0.16.0", features = ["defmt","embassy"]}
+edge-dhcp = { version = "0.6.0", features = ["defmt"] }
+edge-nal = "0.5.0"
+edge-nal-embassy = { version = "0.6.0", features = ["defmt"] }
+picoserve = { version = "0.16.0", features = ["defmt", "embassy"] }
+serde = { version = "1.0.219", default-features = false, features = [
+  "derive",
+  "serde_derive",
+] }
+serde-json-core = { version = "0.6.0", features = ["defmt", "heapless"] }
 
 [profile.dev]
 # Rust debug is too slow.
 # For debug builds always builds with some optimization
-codegen-units    = 6
+codegen-units = 6
 opt-level = "z"
 
 [profile.release]
-codegen-units    = 1     # LLVM can perform better optimizations using a single thread
-debug            = 2
+codegen-units = 1        # LLVM can perform better optimizations using a single thread
+debug = 2
 debug-assertions = false
-incremental      = false
-lto              = 'fat'
-opt-level        = 's'
-overflow-checks  = false
-
+incremental = false
+lto = 'fat'
+opt-level = 's'
+overflow-checks = false
