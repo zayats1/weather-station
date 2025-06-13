@@ -74,6 +74,8 @@ serde = { version = "1.0.219", default-features = false, features = [
   "serde_derive",
 ] }
 serde-json-core = { version = "0.6.0", features = ["defmt", "heapless"] }
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
 
 [profile.dev]
 # Rust debug is too slow.

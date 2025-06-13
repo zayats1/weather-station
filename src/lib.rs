@@ -4,7 +4,9 @@
 
 pub mod network;
 pub mod http_server;
+pub mod sensors;
 /*
+
 The macro makes a some object to have a static lifetime
 which means it will live as long as the program
 */
