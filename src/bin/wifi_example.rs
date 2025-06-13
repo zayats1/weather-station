@@ -8,12 +8,10 @@
 
 //% FEATURES: embassy esp-wifi esp-wifi/wifi esp-hal/unstable
 
-
 #![no_std]
 #![no_main]
 
 use core::{net::Ipv4Addr, str::FromStr};
-use weather_station::make_static;
 use embassy_executor::Spawner;
 use embassy_net::{
     IpListenEndpoint, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4, tcp::TcpSocket,
@@ -29,10 +27,7 @@ use esp_wifi::{
         AccessPointConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState,
     },
 };
-
-
-
-
+use weather_station::make_static;
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 
@@ -55,8 +50,16 @@ async fn main(spawner: Spawner) -> ! {
 
     let device = interfaces.ap;
 
-    let timg1 = TimerGroup::new(peripherals.TIMG1);
-    esp_hal_embassy::init(timg1.timer0);
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "esp32")] {
+            let timg1 = TimerGroup::new(peripherals.TIMG1);
+            esp_hal_embassy::init(timg1.timer0);
+        } else {
+            use esp_hal::timer::systimer::SystemTimer;
+            let systimer = SystemTimer::new(peripherals.SYSTIMER);
+            esp_hal_embassy::init(systimer.alarm0);
+        }
+    }
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
@@ -158,7 +161,7 @@ async fn main(spawner: Spawner) -> ! {
             ",
             )
             .await;
-       
+
         if let Err(e) = r {
             println!("write error: {:?}", e);
         }
@@ -211,7 +214,7 @@ async fn run_dhcp(stack: Stack<'static>, gw_ip_addr: &'static str) {
             &mut buf,
         )
         .await
-        .inspect_err(|e| defmt::warn!("DHCP server error: {:?}",e));
+        .inspect_err(|e| defmt::warn!("DHCP server error: {:?}", e));
         Timer::after(Duration::from_millis(500)).await;
     }
 }

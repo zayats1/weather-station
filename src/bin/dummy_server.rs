@@ -16,23 +16,18 @@ use core::{net::Ipv4Addr, str::FromStr};
 
 use embassy_executor::Spawner;
 use embassy_net::Ipv4Cidr;
-use embassy_net::{
-    StackResources, StaticConfigV4
-};
-use picoserve::{routing::get, AppBuilder, AppRouter};
+use embassy_net::{StackResources, StaticConfigV4};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::println;
-use esp_wifi::{
-    EspWifiController, init,
-};
+use esp_wifi::{EspWifiController, init};
+use picoserve::{AppBuilder, AppRouter, routing::get};
+use weather_station::make_static;
 use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
-use weather_station::make_static;
-
 
 struct AppProps;
 
@@ -45,10 +40,10 @@ impl AppBuilder for AppProps {
 }
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
-const SSID:&'static str = "dummy-server";
+const SSID: &'static str = "dummy-server";
 
 #[esp_hal_embassy::main]
-async fn main(spawner: Spawner)  {
+async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
@@ -66,8 +61,16 @@ async fn main(spawner: Spawner)  {
 
     let device = interfaces.ap;
 
-    let timg1 = TimerGroup::new(peripherals.TIMG1);
-    esp_hal_embassy::init(timg1.timer0);
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "esp32")] {
+            let timg1 = TimerGroup::new(peripherals.TIMG1);
+            esp_hal_embassy::init(timg1.timer0);
+        } else {
+            use esp_hal::timer::systimer::SystemTimer;
+            let systimer = SystemTimer::new(peripherals.SYSTIMER);
+            esp_hal_embassy::init(systimer.alarm0);
+        }
+    }
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
@@ -88,10 +91,9 @@ async fn main(spawner: Spawner)  {
         seed,
     );
 
-    spawner.spawn(connection(controller,SSID)).ok();
+    spawner.spawn(connection(controller, SSID)).ok();
     spawner.spawn(net_task(runner)).ok();
     spawner.spawn(run_dhcp(stack, gw_ip_addr_str)).ok();
-
 
     loop {
         if stack.is_link_up() {
@@ -99,7 +101,7 @@ async fn main(spawner: Spawner)  {
         }
         Timer::after(Duration::from_millis(500)).await;
     }
-   
+
     println!("DHCP is enabled so there's no need to configure a static IP, just in case:");
     while !stack.is_config_up() {
         Timer::after(Duration::from_millis(100)).await
@@ -108,7 +110,6 @@ async fn main(spawner: Spawner)  {
         .config_v4()
         .inspect(|c| println!("ipv4 config: {c:?}"));
 
- 
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
 
     let config = make_static!(
@@ -122,9 +123,8 @@ async fn main(spawner: Spawner)  {
         .keep_connection_alive()
     );
 
-        spawner.must_spawn(web_task(stack, app, config));
+    spawner.must_spawn(web_task(stack, app, config));
 }
-
 
 #[embassy_executor::task]
 async fn web_task(

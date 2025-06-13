@@ -96,3 +96,7 @@ incremental = false
 lto = 'fat'
 opt-level = 's'
 overflow-checks = false
+
+
+[features]
+esp32 =["esp32"]
