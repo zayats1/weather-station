@@ -7,8 +7,7 @@ use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use {esp_backtrace as _, esp_println as _};
-
-extern crate alloc;
+use esp_alloc as _;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
