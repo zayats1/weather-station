@@ -2,7 +2,7 @@
 #![no_main]
 
 use bme280::i2c::AsyncBME280;
-use defmt::{debug, info};
+use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_hal::i2c::master::Config;

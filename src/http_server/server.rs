@@ -3,7 +3,7 @@ use picoserve::routing::get;
 use picoserve::AppBuilder;
 use picoserve::AppRouter;
 
-mod server {}
+
 pub struct AppProps;
 
 impl AppBuilder for AppProps {
