@@ -25,12 +25,20 @@ macro_rules! make_static {
 
 pub const MESSAGES:usize = 1;
 
-#[derive(Debug,Serialize)]
+#[derive(Debug,Serialize,defmt::Format)]
 pub struct NormalizedMeasurments{
-    pressure:f32,
-    humidiity:f32,
-    temperature:f32
+    pub pressure:f32,
+    pub humidiity:f32,
+    pub temperature:f32
 }
+
+
+
 pub type ServerReceiver = Receiver<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
 pub type DataSender = Sender<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
 pub type TheChannel = Channel<CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
+
+
+pub fn to_kpa(pressure:f32)-> f32{
+    pressure / 1000.0
+}
