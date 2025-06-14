@@ -40,7 +40,7 @@ impl AppBuilder for AppProps {
 }
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
-const SSID: &'static str = "dummy-server";
+const SSID: &'static str = "dummy_server";
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {

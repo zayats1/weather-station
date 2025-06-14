@@ -29,7 +29,7 @@ async fn main(_spawner: Spawner) {
     }
     info!("Embassy initialized!");
 
-    let mut dht11_pin = Flex::new(peripherals.GPIO32);
+    let mut dht11_pin = Flex::new(peripherals.GPIO4);
     dht11_pin.apply_output_config(
         &OutputConfig::default()
             .with_drive_mode(esp_hal::gpio::DriveMode::OpenDrain)

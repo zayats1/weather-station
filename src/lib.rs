@@ -2,7 +2,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::{Channel, Receiver, Sender}};
+use embassy_sync::{blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex}, channel::{Channel, Receiver, Sender}};
 use serde::Serialize;
 
 pub mod network;
@@ -15,15 +15,14 @@ which means it will live as long as the program
 */
 #[macro_export]
 macro_rules! make_static {
-    ($t:ty, $val:expr) => ($crate::make_static!($t, $val,));
-    ($t:ty, $val:expr, $(#[$m:meta])*) => {{
-        $(#[$m])*
+    ($t:ty,$val:expr) => {{
         static STATIC_CELL: static_cell::StaticCell<$t> = static_cell::StaticCell::new();
-        STATIC_CELL.init_with(|| $val)
+        #[deny(unused_attributes)]
+        let x = STATIC_CELL.uninit().write(($val));
+        x
     }};
 }
-
-pub const MESSAGES:usize = 1;
+pub const MESSAGES:usize = 2;
 
 #[derive(Debug,Serialize,defmt::Format)]
 pub struct NormalizedMeasurments{
@@ -34,9 +33,9 @@ pub struct NormalizedMeasurments{
 
 
 
-pub type ServerReceiver = Receiver<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
-pub type DataSender = Sender<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
-pub type TheChannel = Channel<CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
+pub type ServerReceiver = Receiver<'static, NoopRawMutex,NormalizedMeasurments,MESSAGES>;
+pub type DataSender = Sender<'static,  NoopRawMutex,NormalizedMeasurments,MESSAGES>;
+pub type TheChannel = Channel< NoopRawMutex,NormalizedMeasurments,MESSAGES>;
 
 
 pub fn to_kpa(pressure:f32)-> f32{
