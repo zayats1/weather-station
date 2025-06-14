@@ -3,7 +3,7 @@
 
 use defmt::{info, println};
 use embassy_executor::Spawner;
-use embassy_time::{Duration, Timer};
+use embassy_time::{Delay, Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::timer::timg::TimerGroup;
@@ -42,14 +42,20 @@ async fn main(_spawner: Spawner) {
 
  
     let mut dht11 = Dht11::new(dht11_pin);
-
+    let mut delay = Delay;
     loop {
-        info!("Waiting");
+        info!("Unchecked");
         let measurments = critical_section::with(|_| {
-            dht11.read()
+            dht11.read(&mut delay)
         }).await;
         println!("{:?}", measurments);
-        Timer::after(Duration::from_millis(1500)).await;
+        Timer::after(Duration::from_millis(1000)).await;
+          info!("CRC");
+        let measurments = critical_section::with(|_| {
+            dht11.read_with_crc_check(&mut delay)
+        }).await;
+        println!("{:?}", measurments);
+        Timer::after(Duration::from_millis(1000)).await;
     }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-beta.0/examples/src/bin

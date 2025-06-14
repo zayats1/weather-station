@@ -1,4 +1,4 @@
-use embassy_time::Delay;
+
 // code from https://github.com/plorefice/dht11-rs
 // I made it async
 // I need to diable interrupts
@@ -61,39 +61,29 @@ where
 
     /// Performs a reading of the sensor.
 
-    pub async fn read(&mut self) -> Result<Measurement, Error<E>>
+    pub async fn read<D:DelayNs>(&mut self,delay:&mut D) -> Result<Measurement, Error<E>>
 where {
-        let mut delay = Delay;
         let mut data = [0u8; 5];
 
         // Perform initial handshake
 
-        self.perform_handshake(&mut delay).await?;
+        self.perform_handshake(delay).await?;
 
         // Read bits
 
-        for i in 0..40 {
-            data[i / 8] <<= 1;
+        for i in 0..5 {
+            for _ in 0..8 {
+                data[i] <<= 1;
 
-            if self.read_bit(&mut delay).await? {
-                data[i / 8] |= 1;
+                if self.read_bit(delay).await? {
+                    data[i] |= 1;
+                }
             }
         }
 
         // Finally wait for line to go idle again.
 
-        self.wait_for_pulse(true, &mut delay).await?;
-
-        // Check CRC
-
-        let crc = data[0]
-            .wrapping_add(data[1])
-            .wrapping_add(data[2])
-            .wrapping_add(data[3]);
-
-        // if crc != data[4] {
-        //     return Err(Error::CrcMismatch);
-        // }
+        self.wait_for_pulse(true, delay).await?;
 
         // Compute temperature
 
@@ -110,28 +100,28 @@ where {
         })
     }
 
-    pub async fn read_with_crc_check(&mut self) -> Result<Measurement, Error<E>>
-where {
-        let mut delay = Delay;
+    pub async fn read_with_crc_check<D:DelayNs>(&mut self,delay:&mut D) -> Result<Measurement, Error<E>> {
+       
         let mut data = [0u8; 5];
 
         // Perform initial handshake
 
-        self.perform_handshake(&mut delay).await?;
+        self.perform_handshake(delay).await?;
 
         // Read bits
 
-        for i in 0..40 {
-            data[i / 8] <<= 1;
+        for i in 0..5 {
+            for _ in 0..8 {
+                data[i] <<= 1;
 
-            if self.read_bit(&mut delay).await? {
-                data[i / 8] |= 1;
+                if self.read_bit(delay).await? {
+                    data[i] |= 1;
+                }
             }
         }
-
         // Finally wait for line to go idle again.
 
-        self.wait_for_pulse(true, &mut delay).await?;
+        self.wait_for_pulse(true, delay).await?;
 
         // Check CRC
 
