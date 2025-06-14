@@ -1,4 +1,5 @@
 
+use embassy_time::Delay;
 // code from https://github.com/plorefice/dht11-rs
 // I made it async
 // I need to diable interrupts
@@ -7,11 +8,11 @@ use embedded_hal_async::delay::DelayNs;
 
 /// How long to wait for a pulse on the data line (in microseconds).
 
-const TIMEOUT_US: u16 = 1_000;
+const TIMEOUT_US: u16 = 1000;
 
 /// Error type for this crate.
 
-#[derive(Debug)]
+#[derive(Debug,defmt::Format)]
 
 pub enum Error<E> {
     /// Timeout during communication.
@@ -33,14 +34,14 @@ pub struct Dht11<GPIO> {
 
 /// Results of a reading performed by the DHT11.
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug,defmt::Format)]
 
 pub struct Measurement {
     /// The measured temperature in tenths of degrees Celsius.
-    pub temperature: i16,
+    pub temperature: f32,
 
     /// The measured humidity in tenths of a percent.
-    pub humidity: u16,
+    pub humidity: f32,
 }
 
 impl<GPIO, E> Dht11<GPIO>
@@ -61,29 +62,29 @@ where
 
     /// Performs a reading of the sensor.
 
-    pub async fn perform_measurement<D>(&mut self, delay: &mut D) -> Result<Measurement, Error<E>>
+    pub async fn read(&mut self) -> Result<Measurement, Error<E>>
     where
-        D: DelayNs,
     {
+        let mut delay = Delay;
         let mut data = [0u8; 5];
 
         // Perform initial handshake
 
-        self.perform_handshake(delay).await?;
+        self.perform_handshake(&mut delay).await?;
 
         // Read bits
 
         for i in 0..40 {
             data[i / 8] <<= 1;
 
-            if self.read_bit(delay).await? {
+            if self.read_bit(&mut delay).await? {
                 data[i / 8] |= 1;
             }
         }
 
         // Finally wait for line to go idle again.
 
-        self.wait_for_pulse(true, delay).await?;
+        self.wait_for_pulse(true, &mut delay).await?;
 
         // Check CRC
 
@@ -105,9 +106,9 @@ where
         }
 
         Ok(Measurement {
-            temperature: temp,
+            temperature: temp as f32 /10.0,
 
-            humidity: u16::from(data[0]) * 10 + u16::from(data[1]),
+            humidity: (u16::from(data[0]) * 10 + u16::from(data[1])) as f32/10.0,
         })
     }
 
@@ -125,7 +126,7 @@ where
 
         self.set_low()?;
 
-        delay.delay_ms(20).await;
+        delay.delay_ms(25).await;
 
         // Restore floating
 
