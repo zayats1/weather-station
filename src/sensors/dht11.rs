@@ -1,4 +1,3 @@
-
 use embassy_time::Delay;
 // code from https://github.com/plorefice/dht11-rs
 // I made it async
@@ -12,7 +11,7 @@ const TIMEOUT_US: u16 = 1000;
 
 /// Error type for this crate.
 
-#[derive(Debug,defmt::Format)]
+#[derive(Debug, defmt::Format)]
 
 pub enum Error<E> {
     /// Timeout during communication.
@@ -34,7 +33,7 @@ pub struct Dht11<GPIO> {
 
 /// Results of a reading performed by the DHT11.
 
-#[derive(Copy, Clone, Default, Debug,defmt::Format)]
+#[derive(Copy, Clone, Default, Debug, defmt::Format)]
 
 pub struct Measurement {
     /// The measured temperature in tenths of degrees Celsius.
@@ -63,8 +62,56 @@ where
     /// Performs a reading of the sensor.
 
     pub async fn read(&mut self) -> Result<Measurement, Error<E>>
-    where
-    {
+where {
+        let mut delay = Delay;
+        let mut data = [0u8; 5];
+
+        // Perform initial handshake
+
+        self.perform_handshake(&mut delay).await?;
+
+        // Read bits
+
+        for i in 0..40 {
+            data[i / 8] <<= 1;
+
+            if self.read_bit(&mut delay).await? {
+                data[i / 8] |= 1;
+            }
+        }
+
+        // Finally wait for line to go idle again.
+
+        self.wait_for_pulse(true, &mut delay).await?;
+
+        // Check CRC
+
+        let crc = data[0]
+            .wrapping_add(data[1])
+            .wrapping_add(data[2])
+            .wrapping_add(data[3]);
+
+        // if crc != data[4] {
+        //     return Err(Error::CrcMismatch);
+        // }
+
+        // Compute temperature
+
+        let mut temp = i16::from(data[2] & 0x7f) * 10 + i16::from(data[3]);
+
+        if data[2] & 0x80 != 0 {
+            temp = -temp;
+        }
+
+        Ok(Measurement {
+            temperature: temp as f32 / 10.0,
+
+            humidity: (u16::from(data[0]) * 10 + u16::from(data[1])) as f32 / 10.0,
+        })
+    }
+
+    pub async fn read_with_crc_check(&mut self) -> Result<Measurement, Error<E>>
+where {
         let mut delay = Delay;
         let mut data = [0u8; 5];
 
@@ -106,9 +153,9 @@ where
         }
 
         Ok(Measurement {
-            temperature: temp as f32 /10.0,
+            temperature: temp as f32 / 10.0,
 
-            humidity: (u16::from(data[0]) * 10 + u16::from(data[1])) as f32/10.0,
+            humidity: (u16::from(data[0]) * 10 + u16::from(data[1])) as f32 / 10.0,
         })
     }
 
@@ -152,12 +199,11 @@ where
         Ok(high > low)
     }
 
-async    fn wait_for_pulse<D>(&mut self, level: bool, delay: &mut D) -> Result<u32, Error<E>>
+    async fn wait_for_pulse<D>(&mut self, level: bool, delay: &mut D) -> Result<u32, Error<E>>
     where
         D: DelayNs,
     {
         let mut count = 0;
-
 
         while self.read_line()? != level {
             count += 1;
@@ -169,7 +215,6 @@ async    fn wait_for_pulse<D>(&mut self, level: bool, delay: &mut D) -> Result<u
             delay.delay_us(1).await;
         }
 
-      
         return Ok(u32::from(count));
     }
 
