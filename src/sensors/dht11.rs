@@ -1,4 +1,3 @@
-
 // code from https://github.com/plorefice/dht11-rs
 // I made it async
 // I need to diable interrupts
@@ -61,7 +60,7 @@ where
 
     /// Performs a reading of the sensor.
 
-    pub async fn read<D:DelayNs>(&mut self,delay:&mut D) -> Result<Measurement, Error<E>>
+    pub async fn read<D: DelayNs>(&mut self, delay: &mut D) -> Result<Measurement, Error<E>>
 where {
         let mut data = [0u8; 5];
 
@@ -100,8 +99,10 @@ where {
         })
     }
 
-    pub async fn read_with_crc_check<D:DelayNs>(&mut self,delay:&mut D) -> Result<Measurement, Error<E>> {
-       
+    pub async fn read_with_crc_check<D: DelayNs>(
+        &mut self,
+        delay: &mut D,
+    ) -> Result<Measurement, Error<E>> {
         let mut data = [0u8; 5];
 
         // Perform initial handshake

@@ -49,7 +49,7 @@ async fn main(_spawner: Spawner) {
             dht11.read(&mut delay)
         }).await;
         println!("{:?}", measurments);
-        Timer::after(Duration::from_millis(1000)).await;
+        Timer::after(Duration::from_millis(1000)).await;  // >=1s interval between measturments is suitable
           info!("CRC");
         let measurments = critical_section::with(|_| {
             dht11.read_with_crc_check(&mut delay)
