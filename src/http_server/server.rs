@@ -14,6 +14,15 @@ use crate::ServerReceiver;
 pub struct AppState{
     receiver:ServerReceiver
 }
+
+impl AppState{
+    pub fn new(receiver:ServerReceiver) -> Self{
+        return Self{
+            receiver
+        };
+    }
+}
+
 pub struct AppProps;
 
 

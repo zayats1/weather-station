@@ -2,7 +2,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::{Receiver, Sender}};
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::{Channel, Receiver, Sender}};
 use serde::Serialize;
 
 pub mod network;
@@ -23,7 +23,7 @@ macro_rules! make_static {
     }};
 }
 
-const MESSAGES:usize = 1;
+pub const MESSAGES:usize = 1;
 
 #[derive(Debug,Serialize)]
 pub struct NormalizedMeasurments{
@@ -31,5 +31,6 @@ pub struct NormalizedMeasurments{
     humidiity:f32,
     temperature:f32
 }
-type ServerReceiver = Receiver<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
-type DataSender = Sender<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
+pub type ServerReceiver = Receiver<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
+pub type DataSender = Sender<'static, CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
+pub type TheChannel = Channel<CriticalSectionRawMutex,NormalizedMeasurments,MESSAGES>;
