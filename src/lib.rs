@@ -2,6 +2,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 
+
 use embassy_sync::{blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex}, channel::{Channel, Receiver, Sender}};
 use serde::Serialize;
 

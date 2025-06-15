@@ -1,12 +1,11 @@
 #![no_std]
 #![no_main]
-
+#![feature(impl_trait_in_assoc_type)]
 use bme280::i2c::AsyncBME280;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_hal::i2c::master::Config;
-use esp_hal::timer::timg::TimerGroup;
 use esp_hal::{clock::CpuClock, i2c::master::I2c};
 use esp_println::println;
 use {esp_backtrace as _, esp_println as _};
