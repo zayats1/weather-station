@@ -1,4 +1,3 @@
-use core::fmt::Write;
 use core::str::FromStr;
 
 use defmt::println;
@@ -37,7 +36,7 @@ impl AppWithStateBuilder for AppProps {
         picoserve::Router::new().route(
             "/",
             get(move |State(receiver): State<ServerReceiver>| async move {
-              //  let mut message = String::<64>::new();
+                //  let mut message = String::<64>::new();
                 let measturments = receiver.receive().await;
                 println!("{:?}", measturments);
                 //message.clear();
@@ -47,10 +46,12 @@ impl AppWithStateBuilder for AppProps {
                 //     measturments.pressure, measturments.temperature, measturments.humidiity
                 // )
                 // .unwrap_or_default();
-                serde_json_core::ser::to_string::<_, 128>(&measturments).unwrap_or(String::from_str("No data!").unwrap())
+                serde_json_core::ser::to_string::<_, 128>(&measturments)
+                    .unwrap_or(String::from_str("No data!").unwrap())
                 //message
             }),
-        )    }
+        )
+    }
 }
 
 #[embassy_executor::task]

@@ -43,14 +43,14 @@ use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
-const MEASURMENT_INTERVAL: Duration = Duration::from_secs(1);
+const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1200);
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_alloc::heap_allocator!(size: 57 * 1024);
+    esp_alloc::heap_allocator!(size: 75 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
@@ -86,8 +86,7 @@ async fn main(spawner: Spawner) {
         init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
     );
 
-    let (controller, interfaces) =
-        esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
+    let (controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
 
     let device = interfaces.ap;
 
@@ -166,9 +165,9 @@ async fn main(spawner: Spawner) {
     let mut ticker = Ticker::every(MEASURMENT_INTERVAL); // precise one interval ticks
     loop {
         info!("Hello world!");
-        let measurments = critical_section::with(|_| bme280.measure(&mut delay)).await;
+        let measurments = bme280.measure(&mut delay).await;
         // println!("{:?}", measurments);
-        let humidity = critical_section::with(|_| dht11.read(&mut delay))
+        let humidity =   critical_section::with(|_| dht11.read(&mut delay))
             .await
             .unwrap_or_default()
             .humidity;
@@ -177,14 +176,13 @@ async fn main(spawner: Spawner) {
         if let Ok(measurments) = measurments {
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
-                humidity: round_up(humidity),
+                humidity: humidity,
                 temperature: round_up(measurments.temperature),
             };
 
             data_sender.send(normalized).await;
-            ticker.next().await;
-            // }
         }
+        ticker.next().await;
     }
 }
 
