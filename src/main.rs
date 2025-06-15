@@ -12,9 +12,12 @@
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
-use core::{net::Ipv4Addr, str::FromStr};
-
 use bme280::i2c::AsyncBME280;
+use esp_hal::spi::master::Spi;
+use esp_hal::spi::Mode;
+use esp_hal::time::Rate;
+
+use core::{net::Ipv4Addr, str::FromStr};
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_net::Ipv4Cidr;
@@ -23,25 +26,24 @@ use embassy_time::{Delay, Duration, Ticker, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
-use esp_hal::i2c;
-use esp_hal::i2c::master::I2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::{i2c, spi};
 use esp_println::println;
 use esp_wifi::{EspWifiController, init};
+use num_traits::float::FloatCore;
 use picoserve::{AppRouter, AppWithStateBuilder};
 
-use weather_station::http_server::server::{web_task, AppProps, AppState};
-use weather_station::sensors::dht11::Dht11;
-use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
+use weather_station::http_server::server::{AppProps, AppState, web_task};
 use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
-
-
+use weather_station::sensors::dht11::Dht11;
+use weather_station::{NormalizedMeasurments, TheChannel, make_static, to_kpa};
+ use esp_hal::i2c::master::I2c;
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
-const MEASURMENT_INTERVAL:Duration = Duration::from_secs(1);
+const MEASURMENT_INTERVAL: Duration = Duration::from_secs(1);
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -53,15 +55,6 @@ async fn main(spawner: Spawner) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
 
-    let esp_wifi_ctrl = &*make_static!(
-        EspWifiController<'static>,
-        init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
-    );
-
-    let (controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
-
-    let device = interfaces.ap;
-
     cfg_if::cfg_if! {
         if #[cfg(feature = "esp32")] {
             let timg1 = TimerGroup::new(peripherals.TIMG1);
@@ -72,6 +65,47 @@ async fn main(spawner: Spawner) {
             esp_hal_embassy::init(systimer.alarm0);
         }
     }
+    let mut delay = Delay;
+    // I2C0 conflicts with wifi in esp32
+
+    let mut dht11_pin = Flex::new(peripherals.GPIO4);
+    dht11_pin.apply_output_config(
+        &OutputConfig::default()
+            .with_drive_mode(esp_hal::gpio::DriveMode::OpenDrain)
+            .with_drive_strength(esp_hal::gpio::DriveStrength::_20mA)
+            .with_pull(Pull::Up),
+    );
+    dht11_pin.apply_input_config(&InputConfig::default().with_pull(Pull::Up));
+    dht11_pin.set_output_enable(true);
+    dht11_pin.set_input_enable(true);
+
+    let mut dht11 = Dht11::new(dht11_pin);
+
+    let esp_wifi_ctrl = &*make_static!(
+        EspWifiController<'static>,
+        init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
+    );
+
+    let (mut controller, interfaces) =
+        esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
+
+    let device = interfaces.ap;
+
+
+    let i2c0 = I2c::new(
+        peripherals.I2C0,
+        i2c::master::Config::default().with_frequency(Rate::from_khz(400)),
+    )
+    .unwrap()
+    .with_sda(peripherals.GPIO8)
+    .with_scl(peripherals.GPIO9)
+    .into_async();
+    // I use BMP280, it is similar, except humidity
+
+    let mut bme280 = AsyncBME280::new_primary(i2c0);
+    bme280.init(& mut delay).await.unwrap();
+
+    println!("ficvk");
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
@@ -111,36 +145,9 @@ async fn main(spawner: Spawner) {
         .config_v4()
         .inspect(|c| println!("ipv4 config: {c:?}"));
 
-
-        let channel = make_static!(TheChannel, TheChannel::new());
+    let channel = make_static!(TheChannel, TheChannel::new());
     let server_receiver = channel.receiver();
     let data_sender = channel.sender();
-
-   
-
-    // let i2c_bus = I2c::new(peripherals.I2C0, i2c::master::Config::default())
-    //     .unwrap()
-    //     .with_scl(peripherals.GPIO25)
-    //     .with_sda(peripherals.GPIO26)
-    //     .into_async();
-    // let mut bme280 = AsyncBME280::new_primary(i2c_bus);
-
-    // let mut dht11_pin = Flex::new(peripherals.GPIO4);
-    // dht11_pin.apply_output_config(
-    //     &OutputConfig::default()
-    //         .with_drive_mode(esp_hal::gpio::DriveMode::OpenDrain)
-    //         .with_drive_strength(esp_hal::gpio::DriveStrength::_20mA)
-    //         .with_pull(Pull::Up),
-    // );
-    // dht11_pin.apply_input_config(&InputConfig::default().with_pull(Pull::Up));
-    // dht11_pin.set_output_enable(true);
-    // dht11_pin.set_input_enable(true);
-
-    // let mut dht11 = Dht11::new(dht11_pin);
-    let mut delay = Delay;
-    // bme280.init(&mut delay).await.unwrap();
-
-
 
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
 
@@ -155,27 +162,39 @@ async fn main(spawner: Spawner) {
         .keep_connection_alive()
     );
 
-
     spawner.must_spawn(web_task(stack, app, config, AppState::new(server_receiver)));
 
     let mut ticker = Ticker::every(MEASURMENT_INTERVAL); // precise one interval ticks
     loop {
-        // info!("Hello world!");
-        //let measurments = bme280.measure(&mut delay).await;
-        // println!("{:?}", measurments);
-        // let humidity = critical_section::with(|_| dht11.read(&mut delay))
-        //     .await.unwrap_or_default().humidity;
-        
-         //Todo error handling
-       // if let Ok(measurements) = measurments {
-            let normalized = NormalizedMeasurments {
-                pressure: 52.0,
-                humidiity: 69.0,
-                temperature: 69.0,
-            };
+        info!("Hello world!");
+         let measurments = critical_section::with(|_| bme280.measure(&mut delay)).await;
+         println!("{:?}", measurments);
+        let humidity = critical_section::with(|_| dht11.read(&mut delay))
+            .await
+            .unwrap_or_default()
+            .humidity;
 
-            data_sender.send(normalized).await;
-        //}
+        let normalized = NormalizedMeasurments {
+            pressure: 69.0,
+            humidiity: 69.0,
+            temperature: 69.0,
+        };
+
+        // Todo error handling
+        //if let Ok(measurments) = measurments {
+        // let normalized = NormalizedMeasurments {
+        //     pressure: round_up(to_kpa(measurments.pressure)),
+        //     humidiity: round_up(humidity),
+        //     temperature: round_up(measurments.temperature),
+        // };
+
+        data_sender.send(normalized).await;
         ticker.next().await;
+        // }
     }
+}
+
+fn round_up(val: f32) -> f32 {
+    let shifted = val * 10.0;
+    return shifted.round() / 10.0;
 }

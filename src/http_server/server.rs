@@ -1,3 +1,5 @@
+
+
 use core::str::FromStr;
 
 use embassy_time::Duration;
@@ -6,7 +8,7 @@ use picoserve::extract::State;
 use picoserve::routing::get;
 use picoserve::AppRouter;
 use picoserve::AppWithStateBuilder;
-use crate::NormalizedMeasurments;
+use serde_json_core::ser;
 use crate::ServerReceiver;
 
 
@@ -38,10 +40,11 @@ impl  AppWithStateBuilder for AppProps {
     type PathRouter = impl picoserve::routing::PathRouter<AppState>;
 
     fn build_app(self) ->  picoserve::Router<Self::PathRouter, Self::State> {
+        //let message = String::<64>::new();
         picoserve::Router::new().route("/", 
         get(move|State(receiver) : State<ServerReceiver>| async move { 
            let measturments  = receiver.receive().await;
-             serde_json_core::to_string::<NormalizedMeasurments,32>(&measturments).unwrap_or(String::from_str("No data").unwrap())
+           ser::to_string::<_, 36>(&measturments).unwrap_or(String::from_str("No data").unwrap())
         }))
     }
 }

@@ -32,7 +32,7 @@ async fn main(_spawner: Spawner) {
 
     let i2c_bus = I2c::new(peripherals.I2C0, Config::default())
         .unwrap()
-        .with_scl(peripherals.GPIO25).with_sda(peripherals.GPIO26).into_async();
+        .with_scl(peripherals.GPIO16).with_sda(peripherals.GPIO15).into_async();
     let mut bme280 = AsyncBME280::new_primary(i2c_bus);
     let mut delay = Delay;
     bme280.init(&mut delay).await.unwrap();
