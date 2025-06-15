@@ -12,6 +12,7 @@
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
+#![feature(let_chains)]
 use bme280::i2c::AsyncBME280;
 use esp_hal::spi::master::Spi;
 use esp_hal::spi::Mode;
@@ -43,7 +44,7 @@ use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
-const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1000);
+const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1550);
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -162,21 +163,19 @@ async fn main(spawner: Spawner) {
 
     spawner.must_spawn(web_task(stack, app, config, AppState::new(server_receiver)));
 
-    let mut ticker = Ticker::every(MEASURMENT_INTERVAL); // precise one interval ticks
     loop {
-        info!("Hello world!");
+        info!("Measurments");
         let measurments = bme280.measure(&mut delay).await;
-        // println!("{:?}", measurments);
-        let humidity =   critical_section::with(|_| dht11.read(&mut delay))
-            .await
-            .unwrap_or_default()
-            .humidity;
+        //println!("{:?}", measurments);
+        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;
 
         // Todo error handling
-        if let Ok(measurments) = measurments {
+        if let Ok(measurments) = measurments
+            && let Ok(humidity_and_temp) = humidity_and_temp
+        {
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
-                humidity: humidity,
+                humidity: humidity_and_temp.humidity,
                 temperature: round_up(measurments.temperature),
             };
 
