@@ -86,7 +86,7 @@ async fn main(spawner: Spawner) {
         init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
     );
 
-    let (mut controller, interfaces) =
+    let (controller, interfaces) =
         esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
 
     let device = interfaces.ap;
@@ -177,7 +177,7 @@ async fn main(spawner: Spawner) {
         if let Ok(measurments) = measurments {
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
-                humidiity: round_up(humidity),
+                humidity: round_up(humidity),
                 temperature: round_up(measurments.temperature),
             };
 

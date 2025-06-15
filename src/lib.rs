@@ -27,7 +27,7 @@ pub const MESSAGES:usize = 2;
 #[derive(Debug,Serialize,defmt::Format)]
 pub struct NormalizedMeasurments{
     pub pressure:f32,
-    pub humidiity:f32,
+    pub humidity:f32,
     pub temperature:f32
 }
 
