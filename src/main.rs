@@ -44,7 +44,7 @@ use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
-const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1550);
+const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1000);
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -73,7 +73,7 @@ async fn main(spawner: Spawner) {
     dht11_pin.apply_output_config(
         &OutputConfig::default()
             .with_drive_mode(esp_hal::gpio::DriveMode::OpenDrain)
-            .with_drive_strength(esp_hal::gpio::DriveStrength::_20mA)
+            .with_drive_strength(esp_hal::gpio::DriveStrength::_40mA)
             .with_pull(Pull::Up),
     );
     dht11_pin.apply_input_config(&InputConfig::default().with_pull(Pull::Up));
@@ -173,6 +173,11 @@ async fn main(spawner: Spawner) {
         if let Ok(measurments) = measurments
             && let Ok(humidity_and_temp) = humidity_and_temp
         {
+
+            if humidity_and_temp.humidity > 100.0{
+                continue;
+            }
+
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
                 humidity: humidity_and_temp.humidity,
