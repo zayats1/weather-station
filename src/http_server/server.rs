@@ -1,55 +1,56 @@
+use core::fmt::Write;
 
-
-use core::str::FromStr;
-
+use defmt::println;
 use embassy_time::Duration;
 use heapless::String;
 use picoserve::extract::State;
 use picoserve::routing::get;
 use picoserve::AppRouter;
 use picoserve::AppWithStateBuilder;
-use serde_json_core::ser;
+
 use crate::ServerReceiver;
 
-
-
-pub struct AppState{
-    receiver:ServerReceiver
+pub struct AppState {
+    receiver: ServerReceiver,
 }
 
-impl AppState{
-    pub fn new(receiver:ServerReceiver) -> Self{
-        return Self{
-            receiver
-        };
+impl AppState {
+    pub fn new(receiver: ServerReceiver) -> Self {
+        return Self { receiver };
     }
 }
 
 pub struct AppProps;
 
-
-impl picoserve::extract::FromRef<AppState> for  ServerReceiver{
+impl picoserve::extract::FromRef<AppState> for ServerReceiver {
     fn from_ref(state: &AppState) -> Self {
-         state.receiver
+        state.receiver
     }
 }
 
-
-impl  AppWithStateBuilder for AppProps {
+impl AppWithStateBuilder for AppProps {
     type State = AppState;
     type PathRouter = impl picoserve::routing::PathRouter<AppState>;
 
-    fn build_app(self) ->  picoserve::Router<Self::PathRouter, Self::State> {
-        //let message = String::<64>::new();
-        picoserve::Router::new().route("/", 
-        get(move|State(receiver) : State<ServerReceiver>| async move { 
-           let measturments  = receiver.receive().await;
-           ser::to_string::<_, 36>(&measturments).unwrap_or(String::from_str("No data").unwrap())
-        }))
+    fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
+        picoserve::Router::new().route(
+            "/",
+            get(move |State(receiver): State<ServerReceiver>| async move {
+                let mut message = String::<64>::new();
+                let measturments = receiver.receive().await;
+                println!("{:?}", measturments);
+                message.clear();
+                writeln!(
+                    &mut message,
+                    "[pressure:{},temperature:{},humidity:{}]",
+                    measturments.pressure, measturments.temperature, measturments.humidiity
+                )
+                .unwrap_or_default();
+                message
+            }),
+        )
     }
 }
-
-
 
 #[embassy_executor::task]
 pub async fn web_task(

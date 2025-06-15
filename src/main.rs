@@ -29,17 +29,17 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_hal::{i2c, spi};
 use esp_println::println;
-use esp_wifi::{EspWifiController, init};
+use esp_wifi::{init, EspWifiController};
 use num_traits::float::FloatCore;
 use picoserve::{AppRouter, AppWithStateBuilder};
 
-use weather_station::http_server::server::{AppProps, AppState, web_task};
+use esp_hal::i2c::master::I2c;
+use weather_station::http_server::server::{web_task, AppProps, AppState};
 use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
 use weather_station::sensors::dht11::Dht11;
-use weather_station::{NormalizedMeasurments, TheChannel, make_static, to_kpa};
- use esp_hal::i2c::master::I2c;
+use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
@@ -91,7 +91,6 @@ async fn main(spawner: Spawner) {
 
     let device = interfaces.ap;
 
-
     let i2c0 = I2c::new(
         peripherals.I2C0,
         i2c::master::Config::default().with_frequency(Rate::from_khz(400)),
@@ -103,7 +102,7 @@ async fn main(spawner: Spawner) {
     // I use BMP280, it is similar, except humidity
 
     let mut bme280 = AsyncBME280::new_primary(i2c0);
-    bme280.init(& mut delay).await.unwrap();
+    bme280.init(&mut delay).await.unwrap();
 
     println!("ficvk");
 
@@ -122,7 +121,7 @@ async fn main(spawner: Spawner) {
     let (stack, runner) = embassy_net::new(
         device,
         config,
-        make_static!(StackResources<3>, StackResources::<3>::new()),
+        make_static!(StackResources<8>, StackResources::<8>::new()),
         seed,
     );
 
@@ -167,30 +166,25 @@ async fn main(spawner: Spawner) {
     let mut ticker = Ticker::every(MEASURMENT_INTERVAL); // precise one interval ticks
     loop {
         info!("Hello world!");
-         let measurments = critical_section::with(|_| bme280.measure(&mut delay)).await;
-         println!("{:?}", measurments);
+        let measurments = critical_section::with(|_| bme280.measure(&mut delay)).await;
+        // println!("{:?}", measurments);
         let humidity = critical_section::with(|_| dht11.read(&mut delay))
             .await
             .unwrap_or_default()
             .humidity;
 
-        let normalized = NormalizedMeasurments {
-            pressure: 69.0,
-            humidiity: 69.0,
-            temperature: 69.0,
-        };
-
         // Todo error handling
-        //if let Ok(measurments) = measurments {
-        // let normalized = NormalizedMeasurments {
-        //     pressure: round_up(to_kpa(measurments.pressure)),
-        //     humidiity: round_up(humidity),
-        //     temperature: round_up(measurments.temperature),
-        // };
+        if let Ok(measurments) = measurments {
+            let normalized = NormalizedMeasurments {
+                pressure: round_up(to_kpa(measurments.pressure)),
+                humidiity: round_up(humidity),
+                temperature: round_up(measurments.temperature),
+            };
 
-        data_sender.send(normalized).await;
-        ticker.next().await;
-        // }
+            data_sender.send(normalized).await;
+            ticker.next().await;
+            // }
+        }
     }
 }
 
