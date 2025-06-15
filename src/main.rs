@@ -43,7 +43,7 @@ use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
-const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1200);
+const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1000);
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -182,7 +182,7 @@ async fn main(spawner: Spawner) {
 
             data_sender.send(normalized).await;
         }
-        ticker.next().await;
+        Timer::after(MEASURMENT_INTERVAL).await;
     }
 }
 
