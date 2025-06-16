@@ -10,11 +10,11 @@
 
 #![no_std]
 #![no_main]
-
+#![feature(impl_trait_in_assoc_type)]
 use core::{net::Ipv4Addr, str::FromStr};
 use embassy_executor::Spawner;
 use embassy_net::{
-    IpListenEndpoint, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4, tcp::TcpSocket,
+    tcp::TcpSocket, IpListenEndpoint, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4,
 };
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
@@ -22,10 +22,11 @@ use esp_backtrace as _;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::{print, println};
 use esp_wifi::{
-    EspWifiController, init,
+    init,
     wifi::{
         AccessPointConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState,
     },
+    EspWifiController,
 };
 use weather_station::make_static;
 
@@ -50,16 +51,9 @@ async fn main(spawner: Spawner) -> ! {
 
     let device = interfaces.ap;
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "esp32")] {
-            let timg1 = TimerGroup::new(peripherals.TIMG1);
-            esp_hal_embassy::init(timg1.timer0);
-        } else {
-            use esp_hal::timer::systimer::SystemTimer;
-            let systimer = SystemTimer::new(peripherals.SYSTIMER);
-            esp_hal_embassy::init(systimer.alarm0);
-        }
-    }
+    use esp_hal::timer::systimer::SystemTimer;
+    let systimer = SystemTimer::new(peripherals.SYSTIMER);
+    esp_hal_embassy::init(systimer.alarm0);
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");

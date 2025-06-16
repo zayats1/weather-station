@@ -1,13 +1,13 @@
 #![no_std]
 #![no_main]
-
+#![feature(impl_trait_in_assoc_type)]
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
+use esp_alloc as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use {esp_backtrace as _, esp_println as _};
-use esp_alloc as _;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -18,16 +18,10 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(size: 72 * 1024);
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "esp32")] {
-            let timg1 = TimerGroup::new(peripherals.TIMG1);
-            esp_hal_embassy::init(timg1.timer0);
-        } else {
-            use esp_hal::timer::systimer::SystemTimer;
-            let systimer = SystemTimer::new(peripherals.SYSTIMER);
-            esp_hal_embassy::init(systimer.alarm0);
-        }
-    }
+    use esp_hal::timer::systimer::SystemTimer;
+    let systimer = SystemTimer::new(peripherals.SYSTIMER);
+    esp_hal_embassy::init(systimer.alarm0);
+
     info!("Embassy initialized!");
 
     let timer1 = TimerGroup::new(peripherals.TIMG0);

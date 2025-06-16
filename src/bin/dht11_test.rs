@@ -1,12 +1,11 @@
 #![no_std]
 #![no_main]
-
+#![feature(impl_trait_in_assoc_type)]
 use defmt::{info, println};
 use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
-use esp_hal::timer::timg::TimerGroup;
 use weather_station::sensors::dht11::Dht11;
 use {esp_backtrace as _, esp_println as _};
 
@@ -17,16 +16,10 @@ async fn main(_spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "esp32")] {
-            let timg1 = TimerGroup::new(peripherals.TIMG1);
-            esp_hal_embassy::init(timg1.timer0);
-        } else {
-            use esp_hal::timer::systimer::SystemTimer;
-            let systimer = SystemTimer::new(peripherals.SYSTIMER);
-            esp_hal_embassy::init(systimer.alarm0);
-        }
-    }
+    use esp_hal::timer::systimer::SystemTimer;
+    let systimer = SystemTimer::new(peripherals.SYSTIMER);
+    esp_hal_embassy::init(systimer.alarm0);
+
     info!("Embassy initialized!");
 
     let mut dht11_pin = Flex::new(peripherals.GPIO4);
@@ -40,20 +33,15 @@ async fn main(_spawner: Spawner) {
     dht11_pin.set_output_enable(true);
     dht11_pin.set_input_enable(true);
 
- 
     let mut dht11 = Dht11::new(dht11_pin);
     let mut delay = Delay;
     loop {
         info!("Unchecked");
-        let measurments = critical_section::with(|_| {
-            dht11.read(&mut delay)
-        }).await;
+        let measurments = critical_section::with(|_| dht11.read(&mut delay)).await;
         println!("{:?}", measurments);
-        Timer::after(Duration::from_millis(1000)).await;  // >=1s interval between measturments is suitable
-          info!("CRC");
-        let measurments = critical_section::with(|_| {
-            dht11.read_with_crc_check(&mut delay)
-        }).await;
+        Timer::after(Duration::from_millis(1000)).await; // >=1s interval between measturments is suitable
+        info!("CRC");
+        let measurments = critical_section::with(|_| dht11.read_with_crc_check(&mut delay)).await;
         println!("{:?}", measurments);
         Timer::after(Duration::from_millis(1000)).await;
     }

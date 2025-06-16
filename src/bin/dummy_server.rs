@@ -22,8 +22,8 @@ use esp_alloc as _;
 use esp_backtrace as _;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::println;
-use esp_wifi::{EspWifiController, init};
-use picoserve::{AppBuilder, AppRouter, routing::get};
+use esp_wifi::{init, EspWifiController};
+use picoserve::{routing::get, AppBuilder, AppRouter};
 use weather_station::make_static;
 use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
@@ -61,16 +61,9 @@ async fn main(spawner: Spawner) {
 
     let device = interfaces.ap;
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "esp32")] {
-            let timg1 = TimerGroup::new(peripherals.TIMG1);
-            esp_hal_embassy::init(timg1.timer0);
-        } else {
-            use esp_hal::timer::systimer::SystemTimer;
-            let systimer = SystemTimer::new(peripherals.SYSTIMER);
-            esp_hal_embassy::init(systimer.alarm0);
-        }
-    }
+    use esp_hal::timer::systimer::SystemTimer;
+    let systimer = SystemTimer::new(peripherals.SYSTIMER);
+    esp_hal_embassy::init(systimer.alarm0);
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");

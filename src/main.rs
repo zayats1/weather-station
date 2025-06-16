@@ -148,6 +148,10 @@ async fn main(spawner: Spawner) {
     let server_receiver = channel.receiver();
     let data_sender = channel.sender();
 
+    let humidity_channel = make_static!(TheChannel, TheChannel::new());
+    let humidity_receiver = channel.receiver();
+    let humisity_sender = channel.sender();
+
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
 
     let config = make_static!(
