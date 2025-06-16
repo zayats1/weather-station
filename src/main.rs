@@ -14,8 +14,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(let_chains)]
 use bme280::i2c::AsyncBME280;
-use esp_hal::spi::master::Spi;
-use esp_hal::spi::Mode;
+
 use esp_hal::time::Rate;
 
 use core::{net::Ipv4Addr, str::FromStr};
@@ -23,12 +22,12 @@ use defmt::info;
 use embassy_executor::Spawner;
 use embassy_net::Ipv4Cidr;
 use embassy_net::{StackResources, StaticConfigV4};
-use embassy_time::{Delay, Duration, Ticker, Timer};
+use embassy_time::{Delay, Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
+use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
-use esp_hal::{i2c, spi};
 use esp_println::println;
 use esp_wifi::{init, EspWifiController};
 use num_traits::float::FloatCore;
@@ -56,16 +55,10 @@ async fn main(spawner: Spawner) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "esp32")] {
-            let timg1 = TimerGroup::new(peripherals.TIMG1);
-            esp_hal_embassy::init(timg1.timer0);
-        } else {
-            use esp_hal::timer::systimer::SystemTimer;
-            let systimer = SystemTimer::new(peripherals.SYSTIMER);
-            esp_hal_embassy::init(systimer.alarm0);
-        }
-    }
+    use esp_hal::timer::systimer::SystemTimer;
+    let systimer = SystemTimer::new(peripherals.SYSTIMER);
+    esp_hal_embassy::init(systimer.alarm0);
+
     let mut delay = Delay;
     // I2C0 conflicts with wifi in esp32
 
@@ -177,8 +170,7 @@ async fn main(spawner: Spawner) {
         if let Ok(measurments) = measurments
             && let Ok(humidity_and_temp) = humidity_and_temp
         {
-
-            if humidity_and_temp.humidity > 100.0{
+            if humidity_and_temp.humidity > 100.0 {
                 continue;
             }
 
