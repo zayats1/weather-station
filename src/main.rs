@@ -97,7 +97,6 @@ async fn main(spawner: Spawner) {
     let mut bme280 = AsyncBME280::new_primary(i2c0);
     bme280.init(&mut delay).await.unwrap();
 
-    println!("ficvk");
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
