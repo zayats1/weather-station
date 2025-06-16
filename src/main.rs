@@ -39,12 +39,15 @@ use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
 use weather_station::sensors::dht11::Dht11;
-use weather_station::{make_static, to_kpa, NormalizedMeasurments, TheChannel};
+use weather_station::{
+    make_static, to_kpa, HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel,
+};
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &'static str = "WeatherStation";
 
-const MEASURMENT_INTERVAL: Duration = Duration::from_millis(1000);
-
+const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(1250);
+const INTERVAL: Duration = Duration::from_millis(100);
+type DHT = Dht11<Flex<'static>>;
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -73,7 +76,7 @@ async fn main(spawner: Spawner) {
     dht11_pin.set_output_enable(true);
     dht11_pin.set_input_enable(true);
 
-    let mut dht11 = Dht11::new(dht11_pin);
+    let dht11 = Dht11::new(dht11_pin);
 
     let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
@@ -96,7 +99,6 @@ async fn main(spawner: Spawner) {
 
     let mut bme280 = AsyncBME280::new_primary(i2c0);
     bme280.init(&mut delay).await.unwrap();
-
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
@@ -140,9 +142,9 @@ async fn main(spawner: Spawner) {
     let server_receiver = channel.receiver();
     let data_sender = channel.sender();
 
-    let humidity_channel = make_static!(TheChannel, TheChannel::new());
-    let humidity_receiver = channel.receiver();
-    let humisity_sender = channel.sender();
+    let humidity_channel = make_static!(TheHumidityChannel, TheHumidityChannel::new());
+    let humidity_receiver = humidity_channel.receiver();
+    let humidity_sender = humidity_channel.sender();
 
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
 
@@ -158,34 +160,46 @@ async fn main(spawner: Spawner) {
     );
 
     spawner.must_spawn(web_task(stack, app, config, AppState::new(server_receiver)));
-
+    spawner.must_spawn(measure_humidity(dht11, humidity_sender));
+    let mut humidity = 0.0f32;
     loop {
         info!("Measurments");
+
         let measurments = bme280.measure(&mut delay).await;
-        //println!("{:?}", measurments);
-        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;
 
-        // Todo error handling
-        if let Ok(measurments) = measurments
-            && let Ok(humidity_and_temp) = humidity_and_temp
-        {
-            if humidity_and_temp.humidity > 100.0 {
-                continue;
+        if let Some(received_humidity) = humidity_receiver.try_receive().ok() {
+            if received_humidity <= 100.0 {
+                humidity = round_up(received_humidity);
             }
-
+        }
+        // Todo error handling
+        if let Ok(measurments) = measurments {
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
-                humidity: humidity_and_temp.humidity,
+                humidity: humidity,
                 temperature: round_up(measurments.temperature),
             };
 
             data_sender.send(normalized).await;
         }
-        Timer::after(MEASURMENT_INTERVAL).await;
+        Timer::after(INTERVAL).await;
     }
 }
 
 fn round_up(val: f32) -> f32 {
     let shifted = val * 10.0;
     return shifted.round() / 10.0;
+}
+
+#[embassy_executor::task]
+async fn measure_humidity(mut dht11: DHT, sender: HumiditySender) {
+    let mut delay = Delay;
+    loop {
+        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;
+        Timer::after(HUMIDITY_MEASURMENT_INTERVAL).await;
+        match humidity_and_temp {
+            Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
+            Err(e) => println!("{:?}", e),
+        }
+    }
 }

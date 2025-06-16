@@ -23,7 +23,7 @@ macro_rules! make_static {
         x
     }};
 }
-pub const MESSAGES:usize = 2;
+pub const MESSAGES:usize = 1;
 
 #[derive(Debug,Serialize,defmt::Format)]
 pub struct NormalizedMeasurments{
@@ -38,6 +38,9 @@ pub type ServerReceiver = Receiver<'static, NoopRawMutex,NormalizedMeasurments,M
 pub type DataSender = Sender<'static,  NoopRawMutex,NormalizedMeasurments,MESSAGES>;
 pub type TheChannel = Channel< NoopRawMutex,NormalizedMeasurments,MESSAGES>;
 
+pub type HumidityReceiver = Receiver<'static, NoopRawMutex,f32,MESSAGES>;
+pub type HumiditySender = Sender<'static,  NoopRawMutex,f32,MESSAGES>;
+pub type TheHumidityChannel = Channel< NoopRawMutex,f32,MESSAGES>;
 
 pub fn to_kpa(pressure:f32)-> f32{
     pressure / 1000.0
