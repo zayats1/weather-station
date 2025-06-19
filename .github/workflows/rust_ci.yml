@@ -35,5 +35,7 @@ jobs:
           components: rust-src, rustfmt, clippy
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
+      - name: Install rust fmt
+        run: rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
       - name: Run command
         run: cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
