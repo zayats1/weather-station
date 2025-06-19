@@ -1,14 +1,14 @@
 [package]
 edition = "2021"
 name    = "weather-station"
-version = "0.1.0"
+version = "0.2.0"
 
 [[bin]]
 name = "weather-station"
 path = "./src/main.rs"
 
 [dependencies]
-defmt = "0.3.10"
+defmt = "1.0.1"
 embassy-net = { version = "0.7.0", features = [
   "dhcpv4",
   "medium-ethernet",

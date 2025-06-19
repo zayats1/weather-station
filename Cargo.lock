@@ -1828,12 +1828,12 @@ dependencies = [
 
 [[package]]
 name = "weather-station"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bme280",
  "cfg-if",
  "critical-section",
- "defmt 0.3.100",
+ "defmt 1.0.1",
  "edge-dhcp",
  "edge-nal",
  "edge-nal-embassy",
