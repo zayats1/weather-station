@@ -44,10 +44,10 @@ async fn main(spawner: Spawner) -> ! {
 
     let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
-        init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
+        init(timg0.timer0, rng, peripherals.RADIO_CLK).unwrap()
     );
 
-    let (controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
+    let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
 
     let device = interfaces.ap;
 
@@ -218,17 +218,14 @@ async fn connection(mut controller: WifiController<'static>) {
     println!("start connection task");
     println!("Device capabilities: {:?}", controller.capabilities());
     loop {
-        match esp_wifi::wifi::wifi_state() {
-            WifiState::ApStarted => {
-                // wait until we're no longer connected
-                controller.wait_for_event(WifiEvent::ApStop).await;
-                Timer::after(Duration::from_millis(5000)).await
-            }
-            _ => {}
+        if esp_wifi::wifi::wifi_state() == WifiState::ApStarted {
+            // wait until we're no longer connected
+            controller.wait_for_event(WifiEvent::ApStop).await;
+            Timer::after(Duration::from_millis(5000)).await
         }
         if !matches!(controller.is_started(), Ok(true)) {
             let client_config = Configuration::AccessPoint(AccessPointConfiguration {
-                ssid: "esp-wifi".try_into().unwrap(),
+                ssid: "esp-wifi".into(),
                 ..Default::default()
             });
             controller.set_configuration(&client_config).unwrap();

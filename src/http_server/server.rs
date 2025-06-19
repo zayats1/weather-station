@@ -16,7 +16,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(receiver: ServerReceiver) -> Self {
-        return Self { receiver };
+        Self { receiver }
     }
 }
 

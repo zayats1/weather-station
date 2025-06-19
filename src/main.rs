@@ -1,4 +1,3 @@
-
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
@@ -33,11 +32,11 @@ use weather_station::{
     make_static, to_kpa, HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel,
 };
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
-const SSID: &'static str = "WeatherStation";
+const SSID: &str = "WeatherStation";
 
 const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(1250);
 const INTERVAL: Duration = Duration::from_millis(100);
-type DHT = Dht11<Flex<'static>>;
+type Dht = Dht11<Flex<'static>>;
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -70,10 +69,10 @@ async fn main(spawner: Spawner) {
 
     let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
-        init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
+        init(timg0.timer0, rng, peripherals.RADIO_CLK).unwrap()
     );
 
-    let (controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
+    let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
 
     let device = interfaces.ap;
 
@@ -157,7 +156,7 @@ async fn main(spawner: Spawner) {
 
         let measurments = bme280.measure(&mut delay).await;
 
-        if let Some(received_humidity) = humidity_receiver.try_receive().ok() {
+        if let Ok(received_humidity) = humidity_receiver.try_receive() {
             if received_humidity <= 100.0 {
                 humidity = round_up(received_humidity);
             }
@@ -166,7 +165,7 @@ async fn main(spawner: Spawner) {
         if let Ok(measurments) = measurments {
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
-                humidity: humidity,
+                humidity,
                 temperature: round_up(measurments.temperature),
             };
 
@@ -178,11 +177,11 @@ async fn main(spawner: Spawner) {
 
 fn round_up(val: f32) -> f32 {
     let shifted = val * 10.0;
-    return shifted.round() / 10.0;
+    shifted.round() / 10.0
 }
 
 #[embassy_executor::task]
-async fn measure_humidity(mut dht11: DHT, sender: HumiditySender) {
+async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
     let mut delay = Delay;
     loop {
         let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;

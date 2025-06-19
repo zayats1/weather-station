@@ -40,7 +40,7 @@ impl AppBuilder for AppProps {
 }
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
-const SSID: &'static str = "dummy_server";
+const SSID: &str = "dummy_server";
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -54,10 +54,10 @@ async fn main(spawner: Spawner) {
 
     let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
-        init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
+        init(timg0.timer0, rng, peripherals.RADIO_CLK).unwrap()
     );
 
-    let (controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
+    let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
 
     let device = interfaces.ap;
 
