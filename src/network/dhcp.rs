@@ -3,7 +3,6 @@ use core::str::FromStr;
 use embassy_net::Stack;
 use embassy_time::{Duration, Timer};
 
-
 #[embassy_executor::task]
 pub async fn run_dhcp(stack: Stack<'static>, gw_ip_addr: &'static str) {
     use core::net::{Ipv4Addr, SocketAddrV4};
@@ -39,7 +38,7 @@ pub async fn run_dhcp(stack: Stack<'static>, gw_ip_addr: &'static str) {
             &mut buf,
         )
         .await
-        .inspect_err(|e| defmt::warn!("DHCP server error: {:?}",e));
+        .inspect_err(|e| defmt::warn!("DHCP server error: {:?}", e));
         Timer::after(Duration::from_millis(500)).await;
     }
 }
