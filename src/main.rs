@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(let_chains)]
+
 use bme280::i2c::AsyncBME280;
 
 use esp_hal::time::Rate;
