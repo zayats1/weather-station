@@ -7,17 +7,16 @@ use bme280::i2c::AsyncBME280;
 use esp_hal::time::Rate;
 
 use core::{net::Ipv4Addr, str::FromStr};
-use defmt::info;
+
 use embassy_executor::Spawner;
 use embassy_net::Ipv4Cidr;
 use embassy_net::{StackResources, StaticConfigV4};
 use embassy_time::{Delay, Duration, Timer};
-use esp_alloc as _;
-use esp_backtrace as _;
+
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
-use esp_println::println;
+
 use esp_wifi::{init, EspWifiController};
 use num_traits::float::FloatCore;
 use picoserve::{AppRouter, AppWithStateBuilder};
@@ -31,14 +30,27 @@ use weather_station::sensors::dht11::Dht11;
 use weather_station::{
     make_static, to_kpa, HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel,
 };
+
+
+use defmt::{info,debug,error};
+
+
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &str = "WeatherStation";
 
 const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(1250);
 const INTERVAL: Duration = Duration::from_millis(100);
 type Dht = Dht11<Flex<'static>>;
+
+
+use panic_rtt_target as _;
+// use esp_alloc as _;
+// use esp_backtrace as _;
+// use esp_println as _;
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
+    rtt_target::rtt_init_defmt!();
     esp_bootloader_esp_idf::esp_app_desc!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
@@ -118,13 +130,13 @@ async fn main(spawner: Spawner) {
         Timer::after(Duration::from_millis(500)).await;
     }
 
-    println!("DHCP is enabled so there's no need to configure a static IP, just in case:");
+    info!("DHCP is enabled so there's no need to configure a static IP, just in case:");
     while !stack.is_config_up() {
         Timer::after(Duration::from_millis(100)).await
     }
     stack
         .config_v4()
-        .inspect(|c| println!("ipv4 config: {c:?}"));
+        .inspect(|c| debug!("ipv4 config: {:?}",c));
 
     let channel = make_static!(TheChannel, TheChannel::new());
     let server_receiver = channel.receiver();
@@ -187,7 +199,7 @@ async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
         Timer::after(HUMIDITY_MEASURMENT_INTERVAL).await;
         match humidity_and_temp {
             Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
-            Err(e) => println!("{:?}", e),
+            Err(e) => error!("{:?}", e),
         }
     }
 }

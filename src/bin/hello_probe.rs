@@ -8,7 +8,6 @@ use esp_alloc as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 
-
 use panic_rtt_target as _;
 
 

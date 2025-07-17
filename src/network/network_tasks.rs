@@ -1,14 +1,14 @@
 use embassy_net::Runner;
 use embassy_time::{Duration, Timer};
-use esp_println::println;
+use defmt::{info,debug};
 use esp_wifi::wifi::{
     AccessPointConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState,
 };
 
 #[embassy_executor::task]
 pub async fn connection(mut controller: WifiController<'static>, ssid: &'static str) {
-    println!("start connection task");
-    println!("Device capabilities: {:?}", controller.capabilities());
+    info!("start connection task");
+    debug!("Device capabilities: {:?}", controller.capabilities());
     loop {
         if esp_wifi::wifi::wifi_state() == WifiState::ApStarted {
             // wait until we're no longer connected
@@ -21,9 +21,9 @@ pub async fn connection(mut controller: WifiController<'static>, ssid: &'static 
                 ..Default::default()
             });
             controller.set_configuration(&client_config).unwrap();
-            println!("Starting wifi");
+            info!("Starting wifi");
             controller.start_async().await.unwrap();
-            println!("Wifi started!");
+            info!("Wifi started!");
         }
     }
 }
