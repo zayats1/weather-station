@@ -32,7 +32,7 @@ use weather_station::{
 };
 
 
-use defmt::{info,debug,error};
+use defmt::{info,debug,warn};
 
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
@@ -199,7 +199,7 @@ async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
         Timer::after(HUMIDITY_MEASURMENT_INTERVAL).await;
         match humidity_and_temp {
             Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
-            Err(e) => error!("{:?}", e),
+            Err(e) => warn!("{:?}", e),
         }
     }
 }
