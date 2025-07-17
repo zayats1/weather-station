@@ -18,20 +18,20 @@ embassy-net = { version = "0.7.0", features = [
 embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 esp-alloc = "0.8.0"
-esp-backtrace = { version = "0.16.0", features = [
+esp-backtrace = { version = "0.17.0", features = [
   "defmt",
   "esp32c3",
   "exception-handler",
   "panic-handler",
 ] }
 
-esp-hal = { version = "1.0.0-beta.1", features = [
+esp-hal = { version = "1.0.0-rc.0", features = [
   "defmt",
   "esp32c3",
   "unstable",
 ] }
 
-esp-println = { version = "0.14.0", features = ["defmt-espflash", "esp32c3"] }
+esp-println = { version = "0.15.0", features = ["defmt-espflash", "esp32c3"] }
 smoltcp = { version = "0.12.0", default-features = false, features = [
   "medium-ethernet",
   "multicast",
@@ -44,7 +44,7 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
   "socket-tcp",
   "socket-udp",
 ] }
-esp-bootloader-esp-idf = "0.1.0"
+
 embassy-futures = "0.1.1"
 embassy-sync = "0.7.0"
 cfg-if = "1.0.1"
@@ -66,8 +66,8 @@ embassy-executor = { version = "0.7.0", features = [
   "nightly",
 ] }
 embassy-time = { version = "0.4.0", features = ["generic-queue-8"] }
-esp-hal-embassy = { version = "0.8.1", features = ["esp32c3"] }
-esp-wifi = { version = "0.14.1", features = [
+esp-hal-embassy = { version = "0.9.0", features = ["esp32c3"] }
+esp-wifi = { version = "0.15.0", features = [
   "builtin-scheduler",
   "defmt",
   "esp-alloc",
@@ -79,6 +79,7 @@ static_cell = { version = "2.1.1", features = ["nightly"] }
 embedded-hal-async = "1.0.0"
 embedded-hal = "1.0.0"
 num-traits = {version = "0.2.19",default-features = false,features = ["libm"]}
+
 
 [profile.dev]
 # Rust debug is too slow.

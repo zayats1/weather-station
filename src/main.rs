@@ -67,10 +67,8 @@ async fn main(spawner: Spawner) {
 
     let dht11 = Dht11::new(dht11_pin);
 
-    let esp_wifi_ctrl = &*make_static!(
-        EspWifiController<'static>,
-        init(timg0.timer0, rng, peripherals.RADIO_CLK).unwrap()
-    );
+    let esp_wifi_ctrl =
+        &*make_static!(EspWifiController<'static>, init(timg0.timer0, rng).unwrap());
 
     let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
 
