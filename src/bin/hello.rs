@@ -9,7 +9,6 @@ use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use {esp_backtrace as _, esp_println as _};
 
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     esp_bootloader_esp_idf::esp_app_desc!();

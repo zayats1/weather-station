@@ -1,6 +1,6 @@
+use defmt::{debug, info};
 use embassy_net::Runner;
 use embassy_time::{Duration, Timer};
-use defmt::{info,debug};
 use esp_wifi::wifi::{
     AccessPointConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState,
 };

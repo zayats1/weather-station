@@ -31,9 +31,7 @@ use weather_station::{
     make_static, to_kpa, HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel,
 };
 
-
-use defmt::{info,debug,warn};
-
+use defmt::{debug, info, warn};
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &str = "WeatherStation";
@@ -41,7 +39,6 @@ const SSID: &str = "WeatherStation";
 const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(1250);
 const INTERVAL: Duration = Duration::from_millis(100);
 type Dht = Dht11<Flex<'static>>;
-
 
 use panic_rtt_target as _;
 // use esp_alloc as _;
@@ -136,7 +133,7 @@ async fn main(spawner: Spawner) {
     }
     stack
         .config_v4()
-        .inspect(|c| debug!("ipv4 config: {:?}",c));
+        .inspect(|c| debug!("ipv4 config: {:?}", c));
 
     let channel = make_static!(TheChannel, TheChannel::new());
     let server_receiver = channel.receiver();

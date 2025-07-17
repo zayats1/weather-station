@@ -10,7 +10,6 @@ use esp_hal::timer::timg::TimerGroup;
 
 use panic_rtt_target as _;
 
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     rtt_target::rtt_init_defmt!();

@@ -13,7 +13,7 @@ use {esp_backtrace as _, esp_println as _};
 #[esp_hal_embassy::main]
 async fn main(_spawner: Spawner) {
     // generator version: 0.3.1
-   esp_bootloader_esp_idf::esp_app_desc!();
+    esp_bootloader_esp_idf::esp_app_desc!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
