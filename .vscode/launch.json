@@ -34,7 +34,7 @@
         {
             "type": "probe-rs-debug",
             "request": "attach",
-            "name": "Attach",
+            "name": "AttachMain",
             "cwd": "${workspaceFolder}",
             "chip": "esp32c3",
             "coreConfigs": [
