@@ -7,11 +7,14 @@ use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
-use {esp_backtrace as _, esp_println as _};
+
+
+use panic_rtt_target as _;
 
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
+    rtt_target::rtt_init_defmt!();
     esp_bootloader_esp_idf::esp_app_desc!();
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
