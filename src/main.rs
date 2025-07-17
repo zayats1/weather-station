@@ -39,6 +39,7 @@ const INTERVAL: Duration = Duration::from_millis(100);
 type Dht = Dht11<Flex<'static>>;
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
+    esp_bootloader_esp_idf::esp_app_desc!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
