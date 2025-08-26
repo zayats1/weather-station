@@ -52,8 +52,8 @@ esp-bootloader-esp-idf = { version = "0.2.0", features = [
 
 
 embassy-futures = "0.1.1"
-embassy-sync = "0.7.0"
-cfg-if = "1.0.1"
+embassy-sync = "0.7.1"
+cfg-if = "1.0.3"
 edge-dhcp = { version = "0.6.0", features = ["defmt"] }
 edge-nal = "0.5.0"
 edge-nal-embassy = { version = "0.6.0", features = ["defmt"] }
