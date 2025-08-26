@@ -17,18 +17,18 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
-use esp_wifi::{init, EspWifiController};
+use esp_wifi::{EspWifiController, init};
 use num_traits::float::FloatCore;
 use picoserve::{AppRouter, AppWithStateBuilder};
 
 use esp_hal::i2c::master::I2c;
-use weather_station::http_server::server::{web_task, AppProps, AppState};
+use weather_station::http_server::server::{AppProps, AppState, web_task};
 use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
 use weather_station::sensors::dht11::Dht11;
 use weather_station::{
-    make_static, to_kpa, HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel,
+    HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel, make_static, to_kpa,
 };
 
 use defmt::{debug, info, warn};
@@ -164,10 +164,10 @@ async fn main(spawner: Spawner) {
 
         let measurments = bme280.measure(&mut delay).await;
 
-        if let Ok(received_humidity) = humidity_receiver.try_receive() {
-            if received_humidity <= 100.0 {
-                humidity = round_up(received_humidity);
-            }
+        if let Ok(received_humidity) = humidity_receiver.try_receive()
+            && received_humidity <= 100.0
+        {
+            humidity = round_up(received_humidity);
         }
         // Todo error handling
         if let Ok(measurments) = measurments {
