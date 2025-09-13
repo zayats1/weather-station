@@ -1727,8 +1727,6 @@ dependencies = [
  "panic-rtt-target",
  "picoserve",
  "rtt-target",
- "serde",
- "serde-json-core",
  "smoltcp",
  "static_cell",
 ]

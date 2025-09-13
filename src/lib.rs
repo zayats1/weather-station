@@ -6,7 +6,7 @@ use embassy_sync::{
     blocking_mutex::raw::NoopRawMutex,
     channel::{Channel, Receiver, Sender},
 };
-use serde::Serialize;
+
 
 pub mod http_server;
 pub mod network;
@@ -27,7 +27,7 @@ macro_rules! make_static {
 }
 pub const MESSAGES: usize = 1;
 
-#[derive(Debug, Serialize, defmt::Format)]
+#[derive(Debug, defmt::Format)]
 pub struct NormalizedMeasurments {
     pub pressure: f32,
     pub humidity: f32,

@@ -1,12 +1,13 @@
-use core::str::FromStr;
+use core::fmt::Write;
+
 
 use defmt::println;
 use embassy_time::Duration;
 use heapless::String;
-use picoserve::extract::State;
-use picoserve::routing::get;
 use picoserve::AppRouter;
 use picoserve::AppWithStateBuilder;
+use picoserve::extract::State;
+use picoserve::routing::get;
 
 use crate::ServerReceiver;
 
@@ -36,19 +37,21 @@ impl AppWithStateBuilder for AppProps {
         picoserve::Router::new().route(
             "/",
             get(move |State(receiver): State<ServerReceiver>| async move {
-                //  let mut message = String::<64>::new();
+                let mut message = String::<200>::new();
                 let measturments = receiver.receive().await;
                 println!("{:?}", measturments);
-                //message.clear();
-                // writeln!(
-                //     &mut message,
-                //     "[pressure:{},temperature:{},humidity:{}]",
-                //     measturments.pressure, measturments.temperature, measturments.humidiity
-                // )
-                // .unwrap_or_default();
-                serde_json_core::ser::to_string::<_, 128>(&measturments)
-                    .unwrap_or(String::from_str("No data!").unwrap())
-                //message
+                message.clear();
+                writeln!(
+                    &mut message,
+                    r#"{{
+                        "pressure": {},
+                        "humidity": {},
+                        "temperature":{}
+                }}"#,
+                    measturments.pressure, measturments.humidity, measturments.temperature,
+                )
+                .unwrap();
+                message
             }),
         )
     }
