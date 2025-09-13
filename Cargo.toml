@@ -7,6 +7,8 @@ version = "0.2.0"
 name = "weather-station"
 path = "./src/main.rs"
 
+
+# Do not run cargo update, this breaks dependencies
 [dependencies]
 defmt = "1.0.1"
 embassy-net = { version = "0.7.0", features = [
