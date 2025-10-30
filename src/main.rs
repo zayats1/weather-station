@@ -17,7 +17,7 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
-use esp_wifi::{EspWifiController, init};
+
 use num_traits::float::FloatCore;
 use picoserve::{AppRouter, AppWithStateBuilder};
 
@@ -45,7 +45,7 @@ use panic_rtt_target as _;
 // use esp_backtrace as _;
 // use esp_println as _;
 
-#[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(spawner: Spawner) {
     rtt_target::rtt_init_defmt!();
     esp_bootloader_esp_idf::esp_app_desc!();
@@ -55,12 +55,21 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(size: 75 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
-    let mut rng = Rng::new(peripherals.RNG);
+    let rng = Rng::new();
 
-    use esp_hal::timer::systimer::SystemTimer;
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
+    use esp_hal::interrupt::software::SoftwareInterruptControl;
+    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
+    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+
+    let esp_wifi_ctrl =
+        &*make_static!(esp_radio::Controller<'static> , esp_radio::init().unwrap());
+
+    let (controller, interfaces) = esp_radio::wifi::new(esp_wifi_ctrl, peripherals.WIFI, Default::default()).unwrap();
+
+    let device = interfaces.ap;
+
+    
     let mut delay = Delay;
     // I2C0 conflicts with wifi in esp32
 
@@ -77,13 +86,7 @@ async fn main(spawner: Spawner) {
 
     let dht11 = Dht11::new(dht11_pin);
 
-    let esp_wifi_ctrl =
-        &*make_static!(EspWifiController<'static>, init(timg0.timer0, rng).unwrap());
-
-    let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
-
-    let device = interfaces.ap;
-
+   
     let i2c0 = I2c::new(
         peripherals.I2C0,
         i2c::master::Config::default().with_frequency(Rate::from_khz(400)),

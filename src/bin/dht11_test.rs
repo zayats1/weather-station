@@ -6,19 +6,21 @@ use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
+use esp_hal::interrupt::software::SoftwareInterruptControl;
 use weather_station::sensors::dht11::Dht11;
 use {esp_backtrace as _, esp_println as _};
 
-#[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(_spawner: Spawner) {
     // generator version: 0.3.1
     esp_bootloader_esp_idf::esp_app_desc!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    use esp_hal::timer::systimer::SystemTimer;
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
+    let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
+    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+
+    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
 
     info!("Embassy initialized!");
 

@@ -7,6 +7,7 @@ use heapless::String;
 use picoserve::AppRouter;
 use picoserve::AppWithStateBuilder;
 use picoserve::extract::State;
+
 use picoserve::routing::get;
 
 use crate::ServerReceiver;
@@ -34,6 +35,7 @@ impl AppWithStateBuilder for AppProps {
     type PathRouter = impl picoserve::routing::PathRouter<AppState>;
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
+        
         picoserve::Router::new().route(
             "/",
             get(move |State(receiver): State<ServerReceiver>| async move {
@@ -51,7 +53,7 @@ impl AppWithStateBuilder for AppProps {
                     measturments.pressure, measturments.humidity, measturments.temperature,
                 )
                 .unwrap();
-                message
+                message.as_str();
             }),
         )
     }

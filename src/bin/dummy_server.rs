@@ -20,10 +20,10 @@ use embassy_net::{StackResources, StaticConfigV4};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
+use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::println;
-use esp_wifi::{init, EspWifiController};
-use picoserve::{routing::get, AppBuilder, AppRouter};
+use picoserve::{AppBuilder, AppRouter, routing::get};
 use weather_station::make_static;
 use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
@@ -42,7 +42,7 @@ impl AppBuilder for AppProps {
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &str = "dummy_server";
 
-#[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(spawner: Spawner) {
     esp_bootloader_esp_idf::esp_app_desc!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -51,18 +51,17 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(size: 57 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
-    let mut rng = Rng::new(peripherals.RNG);
+    let rng = Rng::new();
+    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
-    let esp_wifi_ctrl =
-        &*make_static!(EspWifiController<'static>, init(timg0.timer0, rng).unwrap());
+    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
 
-    let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
+    let esp_wifi_ctrl = &*make_static!(esp_radio::Controller<'static>, esp_radio::init().unwrap());
+
+    let (controller, interfaces) =
+        esp_radio::wifi::new(esp_wifi_ctrl, peripherals.WIFI, Default::default()).unwrap();
 
     let device = interfaces.ap;
-
-    use esp_hal::timer::systimer::SystemTimer;
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");

@@ -12,6 +12,7 @@
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
 use core::{net::Ipv4Addr, str::FromStr};
+use defmt::{debug, info};
 use embassy_executor::Spawner;
 use embassy_net::{
     tcp::TcpSocket, IpListenEndpoint, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4,
@@ -21,18 +22,15 @@ use esp_alloc as _;
 use esp_backtrace as _;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::{print, println};
-use esp_wifi::{
-    init,
-    wifi::{
-        AccessPointConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState,
-    },
-    EspWifiController,
-};
+
+
+use esp_radio::wifi::{AccessPointConfig, ModeConfig, WifiApState, WifiController, WifiDevice, WifiEvent};
 use weather_station::make_static;
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
+const SSID: &str = "WifiExample";
 
-#[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     esp_bootloader_esp_idf::esp_app_desc!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -41,18 +39,21 @@ async fn main(spawner: Spawner) -> ! {
     esp_alloc::heap_allocator!(size: 57 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
-    let mut rng = Rng::new(peripherals.RNG);
+    let rng = Rng::new();
+
+    use esp_hal::interrupt::software::SoftwareInterruptControl;
+    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+
+    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+
 
     let esp_wifi_ctrl =
-        &*make_static!(EspWifiController<'static>, init(timg0.timer0, rng).unwrap());
+        &*make_static!(esp_radio::Controller<'static> , esp_radio::init().unwrap());
 
-    let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, peripherals.WIFI).unwrap();
+    let (controller, interfaces) = esp_radio::wifi::new(esp_wifi_ctrl, peripherals.WIFI, Default::default()).unwrap();
 
     let device = interfaces.ap;
 
-    use esp_hal::timer::systimer::SystemTimer;
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
@@ -73,7 +74,7 @@ async fn main(spawner: Spawner) -> ! {
         seed,
     );
 
-    spawner.spawn(connection(controller)).ok();
+    spawner.spawn(connection(controller,SSID)).ok();
     spawner.spawn(net_task(runner)).ok();
     spawner.spawn(run_dhcp(stack, gw_ip_addr_str)).ok();
 
@@ -114,7 +115,6 @@ async fn main(spawner: Spawner) -> ! {
             continue;
         }
 
-        use embedded_io_async::Write;
 
         let mut buffer = [0u8; 1024];
         let mut pos = 0;
@@ -144,7 +144,7 @@ async fn main(spawner: Spawner) -> ! {
         }
 
         let r = socket
-            .write_all(
+            .write(
                 b"HTTP/1.0 200 OK\r\n\r\n\
             <html>\
                 <body>\
@@ -213,29 +213,26 @@ async fn run_dhcp(stack: Stack<'static>, gw_ip_addr: &'static str) {
 }
 
 #[embassy_executor::task]
-async fn connection(mut controller: WifiController<'static>) {
-    println!("start connection task");
-    println!("Device capabilities: {:?}", controller.capabilities());
+pub async fn connection(mut controller: WifiController<'static>, ssid: &'static str) {
+    info!("start connection task");
+    debug!("Device capabilities: {:?}", controller.capabilities());
     loop {
-        if esp_wifi::wifi::wifi_state() == WifiState::ApStarted {
+        if esp_radio::wifi::ap_state() == WifiApState::Started {
             // wait until we're no longer connected
             controller.wait_for_event(WifiEvent::ApStop).await;
             Timer::after(Duration::from_millis(5000)).await
         }
         if !matches!(controller.is_started(), Ok(true)) {
-            let client_config = Configuration::AccessPoint(AccessPointConfiguration {
-                ssid: "esp-wifi".into(),
-                ..Default::default()
-            });
-            controller.set_configuration(&client_config).unwrap();
-            println!("Starting wifi");
+            let client_config = ModeConfig::AccessPoint(AccessPointConfig::default().with_ssid(ssid.into()));
+            controller.set_config(&client_config).unwrap();
+            info!("Starting wifi");
             controller.start_async().await.unwrap();
-            println!("Wifi started!");
+            info!("Wifi started!");
         }
     }
 }
 
 #[embassy_executor::task]
-async fn net_task(mut runner: Runner<'static, WifiDevice<'static>>) {
+pub async fn net_task(mut runner: Runner<'static, WifiDevice<'static>>) {
     runner.run().await
 }

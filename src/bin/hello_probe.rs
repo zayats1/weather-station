@@ -10,7 +10,7 @@ use esp_hal::timer::timg::TimerGroup;
 
 use panic_rtt_target as _;
 
-#[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(spawner: Spawner) {
     rtt_target::rtt_init_defmt!();
     esp_bootloader_esp_idf::esp_app_desc!();
@@ -20,14 +20,14 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(size: 72 * 1024);
 
-    use esp_hal::timer::systimer::SystemTimer;
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
+    let timg0 = TimerGroup::new(peripherals.TIMG0);
+
+    let software_interrupt = esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+
+    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
 
     info!("Embassy initialized!");
 
-    let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let _init = esp_wifi::init(timer1.timer0, esp_hal::rng::Rng::new(peripherals.RNG)).unwrap();
 
     // TODO: Spawn some tasks
     let _ = spawner;
