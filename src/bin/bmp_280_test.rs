@@ -10,7 +10,7 @@ use esp_hal::{clock::CpuClock, i2c::master::I2c};
 use esp_println::println;
 use {esp_backtrace as _, esp_println as _};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
-
+use esp_alloc as _;
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) {
     // generator version: 0.3.1
