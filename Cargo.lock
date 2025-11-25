@@ -82,7 +82,7 @@ dependencies = [
  "embedded-io 0.6.1",
  "embedded-io-async 0.6.1",
  "futures-intrusive",
- "heapless 0.9.1",
+ "heapless 0.8.0",
 ]
 
 [[package]]
@@ -210,12 +210,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "data-encoding"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
-
-[[package]]
 name = "defmt"
 version = "0.3.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -323,9 +317,9 @@ dependencies = [
 
 [[package]]
 name = "edge-nal-embassy"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "252f89adf4f0016631977bec3ba50d768263a3a9fa9f023b4087088a619568ce"
+checksum = "fb09ea0c604bbcb694ecf9cf6596bc5f59bbb5360b68c3e471b61ae9a55a8533"
 dependencies = [
  "defmt 0.3.100",
  "edge-nal",
@@ -679,7 +673,7 @@ dependencies = [
  "esp-config",
  "esp-metadata-generated",
  "esp-println",
- "heapless 0.9.1",
+ "heapless 0.9.2",
  "riscv",
  "xtensa-lx",
 ]
@@ -843,7 +837,7 @@ dependencies = [
  "esp-radio-rtos-driver",
  "esp-sync",
  "esp-wifi-sys",
- "heapless 0.9.1",
+ "heapless 0.9.2",
  "instability",
  "num-derive",
  "num-traits",
@@ -1107,9 +1101,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1edcd5a338e64688fbdcb7531a846cfd3476a54784dcb918a0844682bc7ada5"
+checksum = "2af2455f757db2b292a9b1768c4b70186d443bcb3b316252d6b540aec1cd89ed"
 dependencies = [
  "defmt 1.0.1",
  "hash32",
@@ -1190,12 +1184,6 @@ dependencies = [
  "quote",
  "syn 2.0.108",
 ]
-
-[[package]]
-name = "lhash"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "744a4c881f502e98c2241d2e5f50040ac73b30194d64452bb6260393b53f0dc9"
 
 [[package]]
 name = "libc"
@@ -1362,21 +1350,17 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "picoserve"
-version = "0.16.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33c13ee221d37df77538b033b831099235067c6a3fdcd2b80ef46c3d5b96e3b2"
+checksum = "969ca99aadcb00ac7b93335b8dde99deef0b8c925cdaf5946ad85cc15c71c761"
 dependencies = [
  "const-sha1",
- "data-encoding",
- "defmt 0.3.100",
+ "defmt 1.0.1",
  "embassy-net",
  "embassy-time 0.5.0",
  "embedded-io-async 0.6.1",
- "futures-util",
  "heapless 0.8.0",
- "lhash",
  "picoserve_derive",
- "ryu",
  "serde",
  "serde-json-core",
  "thiserror",
@@ -1934,7 +1918,7 @@ dependencies = [
  "esp-println",
  "esp-radio",
  "esp-rtos",
- "heapless 0.9.1",
+ "heapless 0.9.2",
  "num-traits",
  "panic-rtt-target",
  "picoserve",

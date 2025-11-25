@@ -58,8 +58,8 @@ embassy-sync = "0.7.2"
 cfg-if = "1.0.4"
 edge-dhcp = { version = "0.6.0", features = ["defmt"] }
 edge-nal = "0.5.0"
-edge-nal-embassy = { version = "0.6.0", features = ["defmt"] }
-picoserve = { version = "0.16.0", features = ["defmt", "embassy"] }
+edge-nal-embassy = { version = "0.7.0", features = ["defmt"] }
+picoserve = { version = "0.17.1", features = ["defmt", "embassy"] }
 
 
 bme280 = {version ="0.5.1",default-features = false,features = ["async","embedded-hal-async","defmt"]}
@@ -78,7 +78,7 @@ esp-radio = { version = "0.17.0", features = [
   "esp32c3",
   "wifi",
 ] }
-heapless = { version = "0.9.1", default-features = false, features = ["portable-atomic-unsafe-assume-single-core"] }
+heapless = { version = "0.9.2", default-features = false, features = ["portable-atomic-unsafe-assume-single-core"] }
 static_cell = { version = "2.1.1", features = ["nightly"] }
 embedded-hal-async = "1.0.0"
 embedded-hal = "1.0.0"
