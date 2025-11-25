@@ -2,7 +2,7 @@
 # runner = "espflash flash --monitor --chip esp32c3 --log-format defmt  --list-all-ports"
 
 # for debugin purposes
-runner = "probe-rs run --chip=esp32c3  --always-print-stacktrace --no-location --catch-hardfault"
+runner = "probe-rs run --chip=esp32c3 --no-location --catch-hardfault"
 [env]
 DEFMT_LOG="info"
 
