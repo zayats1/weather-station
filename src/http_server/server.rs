@@ -53,7 +53,7 @@ impl AppWithStateBuilder for AppProps {
                     measturments.pressure, measturments.humidity, measturments.temperature,
                 )
                 .unwrap();
-                message.as_str();
+                message
             }),
         )
     }
