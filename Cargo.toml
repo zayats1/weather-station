@@ -70,7 +70,7 @@ embassy-executor = { version = "0.9.1", features = [
   "nightly",
 ] }
 embassy-time = { version = "0.5.0", features = ["generic-queue-8"] }
-esp-rtos = { version = "0.2.0", features = ["esp32c3","embassy","esp-radio"] }
+esp-rtos = { version = "0.2.0", features = ["esp32c3","embassy","esp-radio","esp-alloc"] }
 esp-radio = { version = "0.17.0", features = [
   "defmt",
   "esp-alloc",
