@@ -31,7 +31,7 @@ use weather_station::{
     HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel, make_static, to_kpa,
 };
 
-use defmt::{debug, info, warn};
+use defmt::{debug, error, info};
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &str = "WeatherStation";
@@ -77,8 +77,8 @@ async fn main(spawner: Spawner) {
     dht11_pin.apply_output_config(
         &OutputConfig::default()
             .with_drive_mode(esp_hal::gpio::DriveMode::OpenDrain)
-            .with_drive_strength(esp_hal::gpio::DriveStrength::_40mA)
-            .with_pull(Pull::Up),
+         .with_drive_strength(esp_hal::gpio::DriveStrength::_40mA)
+           .with_pull(Pull::Up),
     );
     dht11_pin.apply_input_config(&InputConfig::default().with_pull(Pull::Up));
     dht11_pin.set_output_enable(true);
@@ -168,7 +168,7 @@ async fn main(spawner: Spawner) {
         let measurments = bme280.measure(&mut delay).await;
 
         if let Ok(received_humidity) = humidity_receiver.try_receive()
-            && received_humidity <= 100.0
+           && received_humidity <= 100.0
         {
             humidity = round_up(received_humidity);
         }
@@ -197,9 +197,11 @@ async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
     loop {
         let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;
         Timer::after(HUMIDITY_MEASURMENT_INTERVAL).await;
+        debug!("humidity_and_temp: {}",humidity_and_temp);
         match humidity_and_temp {
             Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
-            Err(e) => warn!("{:?}", e),
+          
+            Err(e) => error!("{:?}", e),
         }
     }
 }
