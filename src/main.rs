@@ -51,7 +51,9 @@ async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_alloc::heap_allocator!(size: 75 * 1024);
+    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 64 * 1024);
+    esp_alloc::heap_allocator!(size: 64
+         * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let rng = Rng::new();
@@ -170,7 +172,9 @@ async fn main(spawner: Spawner) {
 
         let measurments = bme280.measure(&mut delay).await;
 
-        if let Ok(received_humidity) = humidity_receiver.try_receive() {
+        if let Ok(received_humidity) = humidity_receiver.try_receive()
+            && received_humidity <= 100.0
+        {
             humidity = round_up(received_humidity);
         }
         // Todo error handling
@@ -204,7 +208,7 @@ async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
         match humidity_and_temp {
             Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
 
-            Err(e) => error!("{:?}", e),
+            Err(e) => error!("humidity_and_temp: {:?}", e),
         }
     }
 }
