@@ -20,7 +20,7 @@ embassy-net = { version = "0.8.0", features = [
 embedded-io = "0.7.1"
 embedded-io-async = "0.7.0"
 esp-alloc = "0.9.0"
-esp-backtrace = { version = "0.18.1", features = [
+esp-backtrace = { version = "0.19.0", features = [
   "defmt",
   "esp32c3",
   "panic-handler",
@@ -46,11 +46,9 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
   "socket-udp",
 ] }
 
-esp-bootloader-esp-idf = { version = "0.4.0", features = [
+esp-bootloader-esp-idf = { version = "0.5.0", features = [
     "esp32c3",
 ] }
-
-
 
 
 embassy-futures = "0.1.2"
@@ -59,7 +57,7 @@ cfg-if = "1.0.4"
 edge-dhcp = { version = "0.7.0", features = ["defmt"] }
 edge-nal = "0.6.0"
 edge-nal-embassy = { version = "0.8.1", features = ["defmt"] }
-picoserve = { version = "0.17.1", features = ["defmt", "embassy"] }
+picoserve = { version = "0.18.0", features = ["defmt", "embassy"] }
 
 
 bme280 = {version ="0.5.1",default-features = false,features = ["async","embedded-hal-async","defmt"]}
@@ -78,6 +76,11 @@ esp-radio = { version = "1.0.0-beta.0", features = [
   "esp32c3",
   "wifi",
 ] }
+
+esp-sync = {version = "0.1.1", features= ["esp32c3"]}
+
+
+
 heapless = { version = "0.8.0", default-features = false, features = ["portable-atomic-unsafe-assume-single-core"] }
 static_cell = { version = "2.1.1", features = ["nightly"] }
 embedded-hal-async = "1.0.0"
