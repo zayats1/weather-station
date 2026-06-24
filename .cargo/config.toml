@@ -3,8 +3,9 @@
 
 # for debugin purposes
 runner = "probe-rs run --chip=esp32c3 --no-location --catch-hardfault"
+
 [env]
-DEFMT_LOG="info"
+DEFMT_LOG="debug"
 
 [build]
 rustflags = [

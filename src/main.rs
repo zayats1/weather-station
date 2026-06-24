@@ -59,15 +59,22 @@ async fn main(spawner: Spawner) {
 
     use esp_hal::interrupt::software::SoftwareInterruptControl;
     let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-
+   // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
+  // before initializing the radio!
     esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    let access_point_config =
+        esp_radio::wifi::Config::AccessPoint(esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID));
 
-    let esp_wifi_ctrl =
-        &*make_static!(esp_radio::Controller<'static> , esp_radio::init().unwrap());
 
-    let (controller, interfaces) = esp_radio::wifi::new(esp_wifi_ctrl, peripherals.WIFI, Default::default()).unwrap();
+    info!("Starting wifi");
+    let device = esp_radio::wifi::Interface::access_point();
+    let controller = esp_radio::wifi::WifiController::new(
+        peripherals.WIFI,
+        esp_radio::wifi::ControllerConfig::default().with_initial_config(access_point_config),
+    )    .unwrap();
+    info!("Wifi started!");
 
-    let device = interfaces.ap;
+   
 
     
     let mut delay = Delay;
@@ -119,9 +126,9 @@ async fn main(spawner: Spawner) {
         seed,
     );
 
-    spawner.spawn(connection(controller, SSID)).ok();
-    spawner.spawn(net_task(runner)).ok();
-    spawner.spawn(run_dhcp(stack, gw_ip_addr_str)).ok();
+    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(net_task(runner).unwrap());
+    spawner.spawn(run_dhcp(stack, gw_ip_addr_str).unwrap());
 
     loop {
         if stack.is_link_up() {
@@ -159,8 +166,8 @@ async fn main(spawner: Spawner) {
         .keep_connection_alive()
     );
 
-    spawner.must_spawn(web_task(stack, app, config, AppState::new(server_receiver)));
-    spawner.must_spawn(measure_humidity(dht11, humidity_sender));
+    spawner.spawn(web_task(stack, app, config, AppState::new(server_receiver)).unwrap());
+    spawner.spawn(measure_humidity(dht11, humidity_sender).unwrap());
     let mut humidity = 0.0f32;
     loop {
         info!("Measurments");
@@ -168,18 +175,19 @@ async fn main(spawner: Spawner) {
         let measurments = bme280.measure(&mut delay).await;
 
         if let Ok(received_humidity) = humidity_receiver.try_receive()
-           && received_humidity <= 100.0
         {
             humidity = round_up(received_humidity);
         }
         // Todo error handling
+        
         if let Ok(measurments) = measurments {
+           // debug!("measurments {:?}",measurments);
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
                 humidity,
                 temperature: round_up(measurments.temperature),
             };
-
+        
             data_sender.send(normalized).await;
         }
         Timer::after(INTERVAL).await;
