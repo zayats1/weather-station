@@ -20,7 +20,6 @@ use embassy_net::{StackResources, StaticConfigV4};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::println;
 use picoserve::{AppBuilder, AppRouter, routing::get};
@@ -52,16 +51,24 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let rng = Rng::new();
+
+    use esp_hal::interrupt::software::SoftwareInterruptControl;
     let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-
+    // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
+    // before initializing the radio!
     esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    let access_point_config = esp_radio::wifi::Config::AccessPoint(
+        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID),
+    );
 
-    let esp_wifi_ctrl = &*make_static!(esp_radio::Controller<'static>, esp_radio::init().unwrap());
-
-    let (controller, interfaces) =
-        esp_radio::wifi::new(esp_wifi_ctrl, peripherals.WIFI, Default::default()).unwrap();
-
-    let device = interfaces.ap;
+    defmt::info!("Starting wifi");
+    let device = esp_radio::wifi::Interface::access_point();
+    let controller = esp_radio::wifi::WifiController::new(
+        peripherals.WIFI,
+        esp_radio::wifi::ControllerConfig::default().with_initial_config(access_point_config),
+    )
+    .unwrap();
+    defmt::info!("Wifi started!");
 
     let gw_ip_addr_str = GW_IP_ADDR_ENV.unwrap_or("192.168.2.1");
     let gw_ip_addr = Ipv4Addr::from_str(gw_ip_addr_str).expect("failed to parse gateway ip");
@@ -82,9 +89,9 @@ async fn main(spawner: Spawner) {
         seed,
     );
 
-    spawner.spawn(connection(controller, SSID)).ok();
-    spawner.spawn(net_task(runner)).ok();
-    spawner.spawn(run_dhcp(stack, gw_ip_addr_str)).ok();
+    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(net_task(runner).unwrap());
+    spawner.spawn(run_dhcp(stack, gw_ip_addr_str).unwrap());
 
     loop {
         if stack.is_link_up() {
@@ -104,24 +111,24 @@ async fn main(spawner: Spawner) {
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
 
     let config = make_static!(
-        picoserve::Config::<Duration>,
+        picoserve::Config,
         picoserve::Config::new(picoserve::Timeouts {
-            start_read_request: Some(Duration::from_secs(5)),
-            persistent_start_read_request: Some(Duration::from_secs(1)),
-            read_request: Some(Duration::from_secs(1)),
-            write: Some(Duration::from_secs(1)),
+            start_read_request: Duration::from_secs(5),
+            persistent_start_read_request: Duration::from_secs(1),
+            read_request: Duration::from_secs(1),
+            write: Duration::from_secs(1),
         })
         .keep_connection_alive()
     );
 
-    spawner.must_spawn(web_task(stack, app, config));
+    spawner.spawn(web_task(stack, app, config).unwrap());
 }
 
 #[embassy_executor::task]
 async fn web_task(
     stack: embassy_net::Stack<'static>,
     app: &'static AppRouter<AppProps>,
-    config: &'static picoserve::Config<Duration>,
+    config: &'static picoserve::Config,
 ) -> ! {
     let port = 80;
     let mut tcp_rx_buffer = [0; 1024];
@@ -130,5 +137,6 @@ async fn web_task(
 
     picoserve::Server::new(app, config, &mut http_buffer)
         .listen_and_serve(0, stack, port, &mut tcp_rx_buffer, &mut tcp_tx_buffer)
-        .await.into_never()
+        .await
+        .into_never()
 }

@@ -1,12 +1,10 @@
 #![no_std]
-
 #![feature(impl_trait_in_assoc_type)]
 
 use embassy_sync::{
     blocking_mutex::raw::NoopRawMutex,
     channel::{Channel, Receiver, Sender},
 };
-
 
 pub mod http_server;
 pub mod network;

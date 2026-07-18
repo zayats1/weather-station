@@ -5,12 +5,12 @@ use bme280::i2c::AsyncBME280;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
+use esp_alloc as _;
 use esp_hal::i2c::master::Config;
+use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::{clock::CpuClock, i2c::master::I2c};
 use esp_println::println;
 use {esp_backtrace as _, esp_println as _};
-use esp_hal::interrupt::software::SoftwareInterruptControl;
-use esp_alloc as _;
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) {
     // generator version: 0.3.1
@@ -24,14 +24,12 @@ async fn main(_spawner: Spawner) {
 
     esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
 
-
-  
     info!("Embassy initialized!");
 
     let i2c_bus = I2c::new(peripherals.I2C0, Config::default())
         .unwrap()
         .with_sda(peripherals.GPIO8)
-    .with_scl(peripherals.GPIO9)
+        .with_scl(peripherals.GPIO9)
         .into_async();
     let mut bme280 = AsyncBME280::new_primary(i2c_bus);
     let mut delay = Delay;

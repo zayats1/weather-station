@@ -17,7 +17,6 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
-
 use num_traits::float::FloatCore;
 use picoserve::{AppRouter, AppWithStateBuilder};
 
@@ -52,24 +51,31 @@ async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_alloc::heap_allocator!(size: 75 * 1024);
+    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 64 * 1024);
+    esp_alloc::heap_allocator!(size: 64
+         * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let rng = Rng::new();
 
     use esp_hal::interrupt::software::SoftwareInterruptControl;
     let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-
+    // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
+    // before initializing the radio!
     esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    let access_point_config = esp_radio::wifi::Config::AccessPoint(
+        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID),
+    );
 
-    let esp_wifi_ctrl =
-        &*make_static!(esp_radio::Controller<'static> , esp_radio::init().unwrap());
+    info!("Starting wifi");
+    let device = esp_radio::wifi::Interface::access_point();
+    let controller = esp_radio::wifi::WifiController::new(
+        peripherals.WIFI,
+        esp_radio::wifi::ControllerConfig::default().with_initial_config(access_point_config),
+    )
+    .unwrap();
+    info!("Wifi started!");
 
-    let (controller, interfaces) = esp_radio::wifi::new(esp_wifi_ctrl, peripherals.WIFI, Default::default()).unwrap();
-
-    let device = interfaces.ap;
-
-    
     let mut delay = Delay;
     // I2C0 conflicts with wifi in esp32
 
@@ -77,8 +83,8 @@ async fn main(spawner: Spawner) {
     dht11_pin.apply_output_config(
         &OutputConfig::default()
             .with_drive_mode(esp_hal::gpio::DriveMode::OpenDrain)
-         .with_drive_strength(esp_hal::gpio::DriveStrength::_40mA)
-           .with_pull(Pull::Up),
+            .with_drive_strength(esp_hal::gpio::DriveStrength::_40mA)
+            .with_pull(Pull::Up),
     );
     dht11_pin.apply_input_config(&InputConfig::default().with_pull(Pull::Up));
     dht11_pin.set_output_enable(true);
@@ -86,7 +92,6 @@ async fn main(spawner: Spawner) {
 
     let dht11 = Dht11::new(dht11_pin);
 
-   
     let i2c0 = I2c::new(
         peripherals.I2C0,
         i2c::master::Config::default().with_frequency(Rate::from_khz(400)),
@@ -119,9 +124,9 @@ async fn main(spawner: Spawner) {
         seed,
     );
 
-    spawner.spawn(connection(controller, SSID)).ok();
-    spawner.spawn(net_task(runner)).ok();
-    spawner.spawn(run_dhcp(stack, gw_ip_addr_str)).ok();
+    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(net_task(runner).unwrap());
+    spawner.spawn(run_dhcp(stack, gw_ip_addr_str).unwrap());
 
     loop {
         if stack.is_link_up() {
@@ -149,18 +154,18 @@ async fn main(spawner: Spawner) {
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
 
     let config = make_static!(
-        picoserve::Config::<Duration>,
+        picoserve::Config,
         picoserve::Config::new(picoserve::Timeouts {
-            start_read_request: Some(Duration::from_secs(5)),
-            persistent_start_read_request: Some(Duration::from_secs(1)),
-            read_request: Some(Duration::from_secs(1)),
-            write: Some(Duration::from_secs(1)),
+            start_read_request: Duration::from_secs(5),
+            persistent_start_read_request: Duration::from_secs(1),
+            read_request: Duration::from_secs(1),
+            write: Duration::from_secs(1),
         })
         .keep_connection_alive()
     );
 
-    spawner.must_spawn(web_task(stack, app, config, AppState::new(server_receiver)));
-    spawner.must_spawn(measure_humidity(dht11, humidity_sender));
+    spawner.spawn(web_task(stack, app, config, AppState::new(server_receiver)).unwrap());
+    spawner.spawn(measure_humidity(dht11, humidity_sender).unwrap());
     let mut humidity = 0.0f32;
     loop {
         info!("Measurments");
@@ -168,12 +173,14 @@ async fn main(spawner: Spawner) {
         let measurments = bme280.measure(&mut delay).await;
 
         if let Ok(received_humidity) = humidity_receiver.try_receive()
-           && received_humidity <= 100.0
+            && received_humidity <= 100.0
         {
             humidity = round_up(received_humidity);
         }
         // Todo error handling
+
         if let Ok(measurments) = measurments {
+            // debug!("measurments {:?}",measurments);
             let normalized = NormalizedMeasurments {
                 pressure: round_up(to_kpa(measurments.pressure)),
                 humidity,
@@ -197,11 +204,11 @@ async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
     loop {
         let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;
         Timer::after(HUMIDITY_MEASURMENT_INTERVAL).await;
-        debug!("humidity_and_temp: {}",humidity_and_temp);
+        debug!("humidity_and_temp: {}", humidity_and_temp);
         match humidity_and_temp {
             Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
-          
-            Err(e) => error!("{:?}", e),
+
+            Err(e) => error!("humidity_and_temp: {:?}", e),
         }
     }
 }

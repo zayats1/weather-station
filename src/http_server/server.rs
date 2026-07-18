@@ -2,7 +2,6 @@ use core::fmt::Write;
 
 
 use defmt::println;
-use embassy_time::Duration;
 use heapless::String;
 use picoserve::AppRouter;
 use picoserve::AppWithStateBuilder;
@@ -63,7 +62,7 @@ impl AppWithStateBuilder for AppProps {
 pub async fn web_task(
     stack: embassy_net::Stack<'static>,
     app: &'static AppRouter<AppProps>,
-    config: &'static picoserve::Config<Duration>,
+    config: &'static picoserve::Config,
     state: AppState,
 ) -> ! {
     let port = 80;

@@ -11,7 +11,6 @@ use {esp_backtrace as _, esp_println as _};
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
- 
     esp_bootloader_esp_idf::esp_app_desc!();
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -21,12 +20,12 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
 
-    let software_interrupt = esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+    let software_interrupt =
+        esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
     esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
 
     info!("Embassy initialized!");
-
 
     // TODO: Spawn some tasks
     let _ = spawner;
