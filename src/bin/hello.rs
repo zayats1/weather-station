@@ -20,11 +20,7 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
 
-    let software_interrupt =
-        esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-
-    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
-
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
     info!("Embassy initialized!");
 
     // TODO: Spawn some tasks

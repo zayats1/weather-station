@@ -20,8 +20,7 @@ async fn main(_spawner: Spawner) {
 
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
 
-
-    esp_rtos::start(timg0.timer0,peripherals.FROM_CPU_INTR0);
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
 
     info!("Embassy initialized!");
 

@@ -7,7 +7,6 @@ use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
-
 use panic_rtt_target as _;
 
 #[esp_rtos::main]
@@ -22,10 +21,9 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
 
-    let software_interrupt =
-        esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-
-    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
+    // before initializing the radio!
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
 
     info!("Embassy initialized!");
 

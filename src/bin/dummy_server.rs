@@ -20,7 +20,8 @@ use embassy_net::{StackResources, StaticConfigV4};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::timer::timg::TimerGroup;
+use esp_hal::{clock::CpuClock, rng::Rng};
 use esp_println::println;
 use picoserve::{AppBuilder, AppRouter, routing::get};
 use weather_station::make_static;
@@ -49,16 +50,16 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(size: 57 * 1024);
 
-    let timg0 = TimerGroup::new(peripherals.TIMG0);
     let rng = Rng::new();
 
-    use esp_hal::interrupt::software::SoftwareInterruptControl;
-    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+    let timg0 = TimerGroup::new(peripherals.TIMG0);
+
     // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
     // before initializing the radio!
-    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
+
     let access_point_config = esp_radio::wifi::Config::AccessPoint(
-        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID),
+        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID.try_into().unwrap()),
     );
 
     defmt::info!("Starting wifi");

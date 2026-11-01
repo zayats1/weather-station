@@ -6,7 +6,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
-use esp_hal::interrupt::software::SoftwareInterruptControl;
+
 use weather_station::sensors::dht11::Dht11;
 use {esp_backtrace as _, esp_println as _};
 
@@ -18,9 +18,8 @@ async fn main(_spawner: Spawner) {
     let peripherals = esp_hal::init(config);
 
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
-    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
-    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
 
     info!("Embassy initialized!");
 
