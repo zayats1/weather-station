@@ -224,8 +224,7 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
     let mut client = HttpClient::new(&tcp_client, &dns_client);
     let mut rx_buffer = [0u8; 1024];
     let request_interval = REQUEST_INTERVAL
-        .map(|t| t.parse::<u64>().ok().map(|t| Duration::from_millis(t)))
-        .flatten()
+        .and_then(|t| t.parse::<u64>().ok().map(Duration::from_millis))
         .unwrap_or(DEFAULT_REQUEST_INTERVAL);
 
     loop {
@@ -240,9 +239,8 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
         match sending_result {
             Ok(mut reqwest) => {
                 println!("HTTP request successful");
-                match reqwest.send(&mut rx_buffer).await {
-                    Ok(_) => println!("sended"),
-                    Err(_) => (),
+                if let Ok(_) = reqwest.send(&mut rx_buffer).await {
+                    println!("sended")
                 }
             }
             Err(e) => {
