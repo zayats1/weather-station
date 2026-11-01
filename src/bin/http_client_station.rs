@@ -239,8 +239,12 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
         match sending_result {
             Ok(mut reqwest) => {
                 println!("HTTP request successful");
-                if let Ok(_) = reqwest.send(&mut rx_buffer).await {
-                    println!("sended")
+                if let Ok(response) = reqwest.send(&mut rx_buffer).await {
+                    println!("sended");
+                    println!("Response:");
+                    let body = response.body().body_buf;
+                    let text = str::from_utf8(body).unwrap_or("No body");
+                    println!("{}", text);
                 }
             }
             Err(e) => {
