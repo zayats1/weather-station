@@ -35,7 +35,6 @@ use weather_station::{
     make_static, to_kpa,
 };
 
-const GW_IP_ADDR_ENV: &str = "192.168.1.1";
 const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(1250);
 const INTERVAL: Duration = Duration::from_millis(100);
 type Dht = Dht11<Flex<'static>>;
