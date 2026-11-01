@@ -56,12 +56,14 @@ const PASSWORD: &str = match option_env!("PASSWORD") {
     None => "",
 };
 
-
 const WEBSITE: &str = match option_env!("WEBSITE") {
     Some(pass) => pass,
     None => "",
 };
 
+const REQUEST_INTERVAL: Option<&str> = option_env!("REQUEST_INTERVAL");
+
+const DEFAULT_REQUEST_INTERVAL: Duration = Duration::from_millis(2000);
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
@@ -221,49 +223,37 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
     );
 
     let mut client = HttpClient::new(&tcp_client, &dns_client);
-    let mut rx_buffer = [0u8;1024];
+    let mut rx_buffer = [0u8; 1024];
+    let request_interval = REQUEST_INTERVAL
+        .map(|t| t.parse::<u64>().ok().map(|t| Duration::from_millis(t)))
+        .flatten()
+        .unwrap_or(DEFAULT_REQUEST_INTERVAL);
+
     loop {
         let measturments = receiver.receive().await;
         let temperature = measturments.temperature;
         defmt::println!("{:?}", measturments);
         let mut url = String::<200>::new();
         url.clear();
-        write!(
-            &mut url,
-            "{}/update/1/{}", 
-           WEBSITE,
-           temperature,
-        )
-        .unwrap();
-        
+        write!(&mut url, "{}/update/1/{}", WEBSITE, temperature,).unwrap();
+
         let sending_result = client.request(Method::POST, url.as_str()).await;
         match sending_result {
             Ok(mut reqwest) => {
                 println!("HTTP request successful");
-               match reqwest.send(&mut rx_buffer).await{
-                Ok(_) => println!("sended"),
-                Err(_) => {
-                    ()
+                match reqwest.send(&mut rx_buffer).await {
+                    Ok(_) => println!("sended"),
+                    Err(_) => (),
                 }
-            }
-                        
-
             }
             Err(e) => {
                 println!("try again {}", e);
             }
         }
 
-         
-
-
-
-          Timer::after_millis(5000).await;
+        Timer::after(request_interval).await;
     }
-  
 }
-
-
 
 #[embassy_executor::task]
 async fn connection(mut controller: WifiController<'static>) {
@@ -281,7 +271,7 @@ async fn connection(mut controller: WifiController<'static>) {
                 println!("Disconnected: {:?}", info);
             }
             Err(e) => {
-                println!("Failed to connect to wifi: {:?}",e);
+                println!("Failed to connect to wifi: {:?}", e);
             }
         }
 
