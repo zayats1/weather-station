@@ -58,13 +58,11 @@ async fn main(spawner: Spawner) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let rng = Rng::new();
 
-    use esp_hal::interrupt::software::SoftwareInterruptControl;
-    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
     // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
     // before initializing the radio!
-    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    esp_rtos::start(timg0.timer0,peripherals.FROM_CPU_INTR0);
     let access_point_config = esp_radio::wifi::Config::AccessPoint(
-        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID),
+        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID.try_into().unwrap()), 
     );
 
     info!("Starting wifi");
