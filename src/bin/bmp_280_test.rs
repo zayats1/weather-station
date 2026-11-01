@@ -7,7 +7,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_alloc as _;
 use esp_hal::i2c::master::Config;
-use esp_hal::interrupt::software::SoftwareInterruptControl;
+
 use esp_hal::{clock::CpuClock, i2c::master::I2c};
 use esp_println::println;
 use {esp_backtrace as _, esp_println as _};
@@ -20,9 +20,8 @@ async fn main(_spawner: Spawner) {
 
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
 
-    let software_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
-    esp_rtos::start(timg0.timer0, software_interrupt.software_interrupt0);
+    esp_rtos::start(timg0.timer0,peripherals.FROM_CPU_INTR0);
 
     info!("Embassy initialized!");
 
