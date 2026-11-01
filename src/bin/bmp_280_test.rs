@@ -7,7 +7,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_alloc as _;
 use esp_hal::i2c::master::Config;
-use esp_hal::interrupt::software::SoftwareInterrupt;
+
 use esp_hal::{clock::CpuClock, i2c::master::I2c};
 use esp_println::println;
 use {esp_backtrace as _, esp_println as _};
