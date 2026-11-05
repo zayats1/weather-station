@@ -55,7 +55,7 @@ const PASSWORD: &str = match option_env!("PASSWORD") {
     None => "",
 };
 
-const WEBSITE: &str = match option_env!("WEBSITE") {
+const WEBSITE: &str = match option_env!("WEBSITE") { // http
     Some(pass) => pass,
     None => "",
 };
