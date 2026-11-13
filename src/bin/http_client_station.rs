@@ -226,32 +226,21 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
     let request_interval = REQUEST_INTERVAL
         .and_then(|t| t.parse::<u64>().ok().map(Duration::from_millis))
         .unwrap_or(DEFAULT_REQUEST_INTERVAL);
-
+     let mut url = String::<200>::new();
     loop {
         let measturments = receiver.receive().await;
         let temperature = measturments.temperature;
+        let humidity = measturments.humidity;
+        let pressure = measturments.pressure;
         defmt::println!("{:?}", measturments);
-        let mut url = String::<200>::new();
+  
+        update_value(&mut client, & mut rx_buffer, &mut url, temperature, 1).await;
         url.clear();
-        write!(&mut url, "{}/update/1/{}", WEBSITE, temperature,).unwrap();
-
-        let sending_result = client.request(Method::POST, url.as_str()).await;
-        match sending_result {
-            Ok(mut reqwest) => {
-                println!("HTTP request successful");
-                if let Ok(response) = reqwest.send(&mut rx_buffer).await {
-                    println!("sended");
-                    println!("Response:");
-                    let body = response.body().body_buf;
-                    let text = str::from_utf8(body).unwrap_or("No body");
-                    println!("{}", text);
-                }
-            }
-            Err(e) => {
-                println!("try again {}", e);
-            }
-        }
-
+        update_value(&mut client, & mut rx_buffer, &mut url, humidity, 2).await;
+        url.clear();
+        update_value(&mut client, & mut rx_buffer, &mut url, pressure, 3).await;
+        url.clear();
+      
         Timer::after(request_interval).await;
     }
 }
@@ -278,4 +267,30 @@ async fn connection(mut controller: WifiController<'static>) {
 
         Timer::after(Duration::from_millis(5000)).await
     }
+}
+
+
+
+async fn update_value <'a,T,D, const N:usize>(client: &mut HttpClient<'a,T ,D>,rx_buffer: &mut [u8],url: &mut String<N>,value:f32,idx:u32)
+where
+T : embedded_nal_async::TcpConnect +'a,D : embedded_nal_async::Dns + 'a
+{
+        write!(url, "{}/update/{}/{}", WEBSITE, idx,value,).unwrap();
+        let sending_result = client.request(Method::POST, url).await;
+        match sending_result {
+            Ok(mut reqwest) => {
+                println!("HTTP request successful");
+                if let Ok(response) = reqwest.send(rx_buffer).await {
+                    println!("sended");
+                    println!("Response:");
+                    let body = response.body().body_buf;
+                    let text = str::from_utf8(body).unwrap_or("No body");
+                    println!("{}", text);
+                }
+            }
+            Err(e) => {
+                println!("try again {}", e);
+            }
+        }
+
 }
