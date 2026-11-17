@@ -2,15 +2,17 @@
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
 use bme280::i2c::AsyncBME280;
-use defmt::info;
+use defmt::{debug, info};
 use embassy_executor::Spawner;
 use embassy_time::{Delay, Duration, Timer};
 use esp_alloc as _;
 use esp_hal::i2c::master::Config;
 
 use esp_hal::{clock::CpuClock, i2c::master::I2c};
-use esp_println::println;
-use {esp_backtrace as _, esp_println as _};
+// use {esp_backtrace as _, esp_println as _};
+
+use panic_rtt_target as _;
+
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) {
     // generator version: 0.3.1
@@ -21,7 +23,7 @@ async fn main(_spawner: Spawner) {
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
 
     esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
-
+    rtt_target::rtt_init_defmt!();
     info!("Embassy initialized!");
 
     let i2c_bus = I2c::new(peripherals.I2C0, Config::default())
@@ -35,7 +37,10 @@ async fn main(_spawner: Spawner) {
     loop {
         info!("Hello world!");
         let measurments = bme280.measure(&mut delay).await;
-        println!("{:?}", measurments);
+        if let Ok(measures) = measurments {
+              debug!("temperature, pressure {},{}",measures.temperature, measures.pressure);
+        }
+      
         Timer::after(Duration::from_secs(1)).await;
     }
 

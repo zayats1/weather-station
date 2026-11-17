@@ -8,12 +8,14 @@ use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 
 use weather_station::sensors::dht11::Dht11;
-use {esp_backtrace as _, esp_println as _};
+// use {esp_backtrace as _, esp_println as _};
+use panic_rtt_target as _;
 
 #[esp_rtos::main]
 async fn main(_spawner: Spawner) {
     // generator version: 0.3.1
     esp_bootloader_esp_idf::esp_app_desc!();
+    rtt_target::rtt_init_defmt!();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
