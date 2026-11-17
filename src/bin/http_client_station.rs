@@ -8,6 +8,7 @@ use bme280::i2c::AsyncBME280;
 
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use esp_hal::time::Rate;
+use esp_hal::timer::OneShotTimer;
 use esp_radio::wifi::WifiController;
 use heapless::String;
 use reqwless::client::HttpClient;
@@ -35,7 +36,7 @@ use weather_station::{
     make_static, to_kpa,
 };
 
-const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(1250);
+const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(2250);
 const INTERVAL: Duration = Duration::from_millis(100);
 type Dht = Dht11<Flex<'static>>;
 
@@ -160,7 +161,10 @@ async fn main(spawner: Spawner) {
     let humidity_sender = humidity_channel.sender();
 
     spawner.spawn(web_task(stack, server_receiver).unwrap());
-    spawner.spawn(measure_humidity(dht11, humidity_sender).unwrap());
+
+    let timg1 = TimerGroup::new(peripherals.TIMG1);
+    let one_shot = OneShotTimer::new(timg1.timer0).into_async();  // dedicated driver is more stable
+    spawner.spawn(measure_humidity(dht11,one_shot, humidity_sender).unwrap());
 
     let mut humidity = 0.0f32;
     loop {
@@ -194,19 +198,24 @@ fn round_up(val: f32) -> f32 {
     shifted.round() / 10.0
 }
 
+
+
 #[embassy_executor::task]
-async fn measure_humidity(mut dht11: Dht, sender: HumiditySender) {
-    let mut delay = Delay;
+async fn measure_humidity(mut dht11: Dht, mut timer: OneShotTimer<'static,esp_hal::Async>, sender: HumiditySender) {
     loop {
-        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut delay)).await;
-        Timer::after(HUMIDITY_MEASURMENT_INTERVAL).await;
-        debug!("humidity_and_temp: {}", humidity_and_temp);
+        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut timer)).await;
+       
         match humidity_and_temp {
-            Ok(humidity_and_temp) => sender.send(humidity_and_temp.humidity).await,
+            Ok(humidity_and_temp) => {
+                debug!("humidity_and_temp: {}", humidity_and_temp);
+                sender.send(humidity_and_temp.humidity).await;
+            }
 
             Err(e) => error!("humidity_and_temp: {:?}", e),
         }
+        timer.delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32).await;
     }
+     
 }
 
 #[embassy_executor::task]
