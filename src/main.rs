@@ -61,9 +61,9 @@ async fn main(spawner: Spawner) {
 
     // THIS IS IMPORTANT FOR WIFI AND BLE: You MUST start the scheduler
     // before initializing the radio!
-    esp_rtos::start(timg0.timer0,peripherals.FROM_CPU_INTR0);
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
     let access_point_config = esp_radio::wifi::Config::AccessPoint(
-        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID.try_into().unwrap()), 
+        esp_radio::wifi::ap::AccessPointConfig::default().with_ssid(SSID.try_into().unwrap()),
     );
 
     info!("Starting wifi");
@@ -165,11 +165,9 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(web_task(stack, app, config, AppState::new(server_receiver)).unwrap());
 
-
-
     let timg1 = TimerGroup::new(peripherals.TIMG1);
     let one_shot = OneShotTimer::new(timg1.timer0).into_async();
-    spawner.spawn(measure_humidity(dht11,one_shot, humidity_sender).unwrap());
+    spawner.spawn(measure_humidity(dht11, one_shot, humidity_sender).unwrap());
     let mut humidity = 0.0f32;
     loop {
         info!("Measurments");
@@ -203,10 +201,14 @@ fn round_up(val: f32) -> f32 {
 }
 
 #[embassy_executor::task]
-async fn measure_humidity(mut dht11: Dht, mut timer: OneShotTimer<'static,esp_hal::Async>, sender: HumiditySender) {
+async fn measure_humidity(
+    mut dht11: Dht,
+    mut timer: OneShotTimer<'static, esp_hal::Async>,
+    sender: HumiditySender,
+) {
     loop {
         let humidity_and_temp = critical_section::with(|_| dht11.read(&mut timer)).await;
-       
+
         match humidity_and_temp {
             Ok(humidity_and_temp) => {
                 debug!("humidity_and_temp: {}", humidity_and_temp);
@@ -215,7 +217,8 @@ async fn measure_humidity(mut dht11: Dht, mut timer: OneShotTimer<'static,esp_ha
 
             Err(e) => error!("humidity_and_temp: {:?}", e),
         }
-        timer.delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32).await;
+        timer
+            .delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32)
+            .await;
     }
-     
 }

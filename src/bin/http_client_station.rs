@@ -56,7 +56,8 @@ const PASSWORD: &str = match option_env!("PASSWORD") {
     None => "",
 };
 
-const WEBSITE: &str = match option_env!("WEBSITE") { // http
+const WEBSITE: &str = match option_env!("WEBSITE") {
+    // http
     Some(pass) => pass,
     None => "",
 };
@@ -163,8 +164,8 @@ async fn main(spawner: Spawner) {
     spawner.spawn(web_task(stack, server_receiver).unwrap());
 
     let timg1 = TimerGroup::new(peripherals.TIMG1);
-    let one_shot = OneShotTimer::new(timg1.timer0).into_async();  // dedicated driver is more stable
-    spawner.spawn(measure_humidity(dht11,one_shot, humidity_sender).unwrap());
+    let one_shot = OneShotTimer::new(timg1.timer0).into_async(); // dedicated driver is more stable
+    spawner.spawn(measure_humidity(dht11, one_shot, humidity_sender).unwrap());
 
     let mut humidity = 0.0f32;
     loop {
@@ -198,13 +199,15 @@ fn round_up(val: f32) -> f32 {
     shifted.round() / 10.0
 }
 
-
-
 #[embassy_executor::task]
-async fn measure_humidity(mut dht11: Dht, mut timer: OneShotTimer<'static,esp_hal::Async>, sender: HumiditySender) {
+async fn measure_humidity(
+    mut dht11: Dht,
+    mut timer: OneShotTimer<'static, esp_hal::Async>,
+    sender: HumiditySender,
+) {
     loop {
         let humidity_and_temp = critical_section::with(|_| dht11.read(&mut timer)).await;
-       
+
         match humidity_and_temp {
             Ok(humidity_and_temp) => {
                 debug!("humidity_and_temp: {}", humidity_and_temp);
@@ -213,9 +216,10 @@ async fn measure_humidity(mut dht11: Dht, mut timer: OneShotTimer<'static,esp_ha
 
             Err(e) => error!("humidity_and_temp: {:?}", e),
         }
-        timer.delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32).await;
+        timer
+            .delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32)
+            .await;
     }
-     
 }
 
 #[embassy_executor::task]
@@ -235,21 +239,21 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
     let request_interval = REQUEST_INTERVAL
         .and_then(|t| t.parse::<u64>().ok().map(Duration::from_millis))
         .unwrap_or(DEFAULT_REQUEST_INTERVAL);
-     let mut url = String::<200>::new();
+    let mut url = String::<200>::new();
     loop {
         let measturments = receiver.receive().await;
         let temperature = measturments.temperature;
         let humidity = measturments.humidity;
         let pressure = measturments.pressure;
         defmt::println!("{:?}", measturments);
-  
-        update_value(&mut client, & mut rx_buffer, &mut url, temperature, 1).await;
+
+        update_value(&mut client, &mut rx_buffer, &mut url, temperature, 1).await;
         url.clear();
-        update_value(&mut client, & mut rx_buffer, &mut url, humidity, 2).await;
+        update_value(&mut client, &mut rx_buffer, &mut url, humidity, 2).await;
         url.clear();
-        update_value(&mut client, & mut rx_buffer, &mut url, pressure, 3).await;
+        update_value(&mut client, &mut rx_buffer, &mut url, pressure, 3).await;
         url.clear();
-      
+
         Timer::after(request_interval).await;
     }
 }
@@ -278,28 +282,31 @@ async fn connection(mut controller: WifiController<'static>) {
     }
 }
 
-
-
-async fn update_value <'a,T,D, const N:usize>(client: &mut HttpClient<'a,T ,D>,rx_buffer: &mut [u8],url: &mut String<N>,value:f32,idx:u32)
-where
-T : embedded_nal_async::TcpConnect +'a,D : embedded_nal_async::Dns + 'a
+async fn update_value<'a, T, D, const N: usize>(
+    client: &mut HttpClient<'a, T, D>,
+    rx_buffer: &mut [u8],
+    url: &mut String<N>,
+    value: f32,
+    idx: u32,
+) where
+    T: embedded_nal_async::TcpConnect + 'a,
+    D: embedded_nal_async::Dns + 'a,
 {
-        write!(url, "{}/update/{}/{}", WEBSITE, idx,value,).unwrap();
-        let sending_result = client.request(Method::POST, url).await;
-        match sending_result {
-            Ok(mut reqwest) => {
-                println!("HTTP request successful");
-                if let Ok(response) = reqwest.send(rx_buffer).await {
-                    println!("sended");
-                    println!("Response:");
-                    let body = response.body().body_buf;
-                    let text = str::from_utf8(body).unwrap_or("No body");
-                    println!("{}", text);
-                }
-            }
-            Err(e) => {
-                println!("try again {}", e);
+    write!(url, "{}/update/{}/{}", WEBSITE, idx, value,).unwrap();
+    let sending_result = client.request(Method::POST, url).await;
+    match sending_result {
+        Ok(mut reqwest) => {
+            println!("HTTP request successful");
+            if let Ok(response) = reqwest.send(rx_buffer).await {
+                println!("sended");
+                println!("Response:");
+                let body = response.body().body_buf;
+                let text = str::from_utf8(body).unwrap_or("No body");
+                println!("{}", text);
             }
         }
-
+        Err(e) => {
+            println!("try again {}", e);
+        }
+    }
 }

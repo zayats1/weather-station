@@ -1,6 +1,5 @@
 use core::fmt::Write;
 
-
 use defmt::println;
 use heapless::String;
 use picoserve::AppRouter;
@@ -34,7 +33,6 @@ impl AppWithStateBuilder for AppProps {
     type PathRouter = impl picoserve::routing::PathRouter<AppState>;
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
-        
         picoserve::Router::new().route(
             "/",
             get(move |State(receiver): State<ServerReceiver>| async move {
@@ -70,8 +68,8 @@ pub async fn web_task(
     let mut tcp_tx_buffer = [0; 1024];
     let mut http_buffer = [0; 2048];
 
-   picoserve::Server::new(&app.shared().with_state(state), config, &mut http_buffer)
+    picoserve::Server::new(&app.shared().with_state(state), config, &mut http_buffer)
         .listen_and_serve(0, stack, port, &mut tcp_rx_buffer, &mut tcp_tx_buffer)
-        .await.into_never()
-     
+        .await
+        .into_never()
 }

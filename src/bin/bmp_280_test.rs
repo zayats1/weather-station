@@ -38,9 +38,12 @@ async fn main(_spawner: Spawner) {
         info!("Hello world!");
         let measurments = bme280.measure(&mut delay).await;
         if let Ok(measures) = measurments {
-              debug!("temperature, pressure {},{}",measures.temperature, measures.pressure);
+            debug!(
+                "temperature, pressure {},{}",
+                measures.temperature, measures.pressure
+            );
         }
-      
+
         Timer::after(Duration::from_secs(1)).await;
     }
 
