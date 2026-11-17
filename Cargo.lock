@@ -1786,7 +1786,6 @@ checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
 dependencies = [
  "defmt 0.3.101",
  "hash32 0.3.1",
- "portable-atomic",
  "serde",
  "stable_deref_trait",
 ]
@@ -1799,6 +1798,7 @@ checksum = "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4"
 dependencies = [
  "defmt 1.2.0",
  "hash32 0.3.1",
+ "portable-atomic",
  "serde_core",
  "stable_deref_trait",
 ]
@@ -2205,9 +2205,9 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "picoserve"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59fb416fcd483bf1db5aa8d90506aa6967b9d0128e2646a929538d24d117433e"
+checksum = "48ea8011a365c3c6151b430e81368ac304a2075a2016824e9113191d30987edb"
 dependencies = [
  "const-sha1",
  "defmt 1.2.0",
@@ -2226,9 +2226,9 @@ dependencies = [
 
 [[package]]
 name = "picoserve_derive"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "981b69aa2731710212ac4582c3adc5832e8559d34ec810c318fe73273b05ccfe"
+checksum = "4a6bb05b0d68b7b33e44cdd00189af3c704c14034c3f2b7d283114b1c3134687"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3057,7 +3057,7 @@ checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
 name = "weather-station"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "bme280",
  "cfg-if",
@@ -3084,7 +3084,7 @@ dependencies = [
  "esp-radio",
  "esp-rtos",
  "esp-sync",
- "heapless 0.8.0",
+ "heapless 0.9.3",
  "num-traits",
  "panic-rtt-target",
  "picoserve",
