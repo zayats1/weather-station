@@ -5,6 +5,7 @@ use embassy_sync::{
     blocking_mutex::raw::NoopRawMutex,
     channel::{Channel, Receiver, Sender},
 };
+use embassy_time::Duration;
 
 pub mod http_server;
 pub mod network;
@@ -25,6 +26,10 @@ macro_rules! make_static {
 }
 pub const MESSAGES: usize = 1;
 
+pub const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(2250);
+
+
+
 #[derive(Debug, defmt::Format)]
 pub struct NormalizedMeasurments {
     pub pressure: f32,
@@ -43,3 +48,4 @@ pub type TheHumidityChannel = Channel<NoopRawMutex, f32, MESSAGES>;
 pub fn to_kpa(pressure: f32) -> f32 {
     pressure / 1000.0
 }
+

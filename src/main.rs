@@ -27,18 +27,14 @@ use weather_station::network::dhcp::run_dhcp;
 use weather_station::network::network_tasks::connection;
 use weather_station::network::network_tasks::net_task;
 use weather_station::sensors::dht11::Dht11;
-use weather_station::{
-    HumiditySender, NormalizedMeasurments, TheChannel, TheHumidityChannel, make_static, to_kpa,
-};
+use weather_station::{NormalizedMeasurments, TheChannel, TheHumidityChannel, make_static, to_kpa};
 
-use defmt::{debug, error, info};
+use defmt::{debug, info};
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
 const SSID: &str = "WeatherStation";
 
-const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(2250);
 const INTERVAL: Duration = Duration::from_millis(100);
-type Dht = Dht11<Flex<'static>>;
 
 use panic_rtt_target as _;
 // use esp_alloc as _;
@@ -167,7 +163,14 @@ async fn main(spawner: Spawner) {
 
     let timg1 = TimerGroup::new(peripherals.TIMG1);
     let one_shot = OneShotTimer::new(timg1.timer0).into_async();
-    spawner.spawn(measure_humidity(dht11, one_shot, humidity_sender).unwrap());
+    spawner.spawn(
+        weather_station::sensors::measure_humidity::measure_humidity(
+            dht11,
+            one_shot,
+            humidity_sender,
+        )
+        .unwrap(),
+    );
     let mut humidity = 0.0f32;
     loop {
         info!("Measurments");
@@ -198,27 +201,4 @@ async fn main(spawner: Spawner) {
 fn round_up(val: f32) -> f32 {
     let shifted = val * 10.0;
     shifted.round() / 10.0
-}
-
-#[embassy_executor::task]
-async fn measure_humidity(
-    mut dht11: Dht,
-    mut timer: OneShotTimer<'static, esp_hal::Async>,
-    sender: HumiditySender,
-) {
-    loop {
-        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut timer)).await;
-
-        match humidity_and_temp {
-            Ok(humidity_and_temp) => {
-                debug!("humidity_and_temp: {}", humidity_and_temp);
-                sender.send(humidity_and_temp.humidity).await;
-            }
-
-            Err(e) => error!("humidity_and_temp: {:?}", e),
-        }
-        timer
-            .delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32)
-            .await;
-    }
 }
