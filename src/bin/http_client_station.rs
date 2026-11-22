@@ -9,7 +9,6 @@ use bme280::i2c::AsyncBME280;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use esp_hal::time::Rate;
 use esp_hal::timer::OneShotTimer;
-use esp_radio::wifi::WifiController;
 use heapless::String;
 use reqwless::client::HttpClient;
 
@@ -29,11 +28,14 @@ use esp_hal::i2c::master::I2c;
 
 use reqwless::request::Method;
 
-use weather_station::network::network_tasks::net_task;
+use weather_station::network::network_tasks::{net_task, connection_sta};
 use weather_station::sensors::dht11::Dht11;
 use weather_station::{
     NormalizedMeasurments, ServerReceiver, TheChannel, TheHumidityChannel, make_static, to_kpa,
 };
+
+
+
 
 const INTERVAL: Duration = Duration::from_millis(100);
 
@@ -142,7 +144,7 @@ async fn main(spawner: Spawner) {
     let mut bme280 = AsyncBME280::new_primary(i2c0);
     bme280.init(&mut delay).await.unwrap();
 
-    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(connection_sta(controller).unwrap());
     spawner.spawn(net_task(runner).unwrap());
     //spawner.spawn(weather_station::network::dhcp::run_dhcp(stack, GW_IP_ADDR_ENV).unwrap());
 
@@ -239,29 +241,7 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
     }
 }
 
-#[embassy_executor::task]
-async fn connection(mut controller: WifiController<'static>) {
-    println!("start connection task");
 
-    loop {
-        println!("About to connect...");
-
-        match controller.connect_async().await {
-            Ok(info) => {
-                println!("Wifi connected to {:?}", info);
-
-                // wait until we're no longer connected
-                let info = controller.wait_for_disconnect_async().await.ok();
-                println!("Disconnected: {:?}", info);
-            }
-            Err(e) => {
-                println!("Failed to connect to wifi: {:?}", e);
-            }
-        }
-
-        Timer::after(Duration::from_millis(5000)).await
-    }
-}
 
 async fn update_value<'a, T, D, const N: usize>(
     client: &mut HttpClient<'a, T, D>,

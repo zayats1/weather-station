@@ -24,7 +24,7 @@ use picoserve::{AppRouter, AppWithStateBuilder};
 use esp_hal::i2c::master::I2c;
 use weather_station::http_server::server::{AppProps, AppState, web_task};
 use weather_station::network::dhcp::run_dhcp;
-use weather_station::network::network_tasks::connection;
+use weather_station::network::network_tasks::connection_ap;
 use weather_station::network::network_tasks::net_task;
 use weather_station::sensors::dht11::Dht11;
 use weather_station::{NormalizedMeasurments, TheChannel, TheHumidityChannel, make_static, to_kpa};
@@ -119,7 +119,7 @@ async fn main(spawner: Spawner) {
         seed,
     );
 
-    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(connection_ap(controller).unwrap());
     spawner.spawn(net_task(runner).unwrap());
     spawner.spawn(run_dhcp(stack, gw_ip_addr_str).unwrap());
 
