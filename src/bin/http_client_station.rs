@@ -20,8 +20,6 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
-use num_traits::float::FloatCore;
-
 use defmt::{debug, info, println};
 use embassy_net::dns::DnsSocket;
 use esp_hal::i2c::master::I2c;
@@ -34,7 +32,7 @@ use weather_station::{
     NormalizedMeasurments, ServerReceiver, TheChannel, TheHumidityChannel, make_static, to_kpa,
 };
 
-
+use weather_station::round_up;
 
 
 const INTERVAL: Duration = Duration::from_millis(100);
@@ -200,10 +198,6 @@ async fn main(spawner: Spawner) {
     }
 }
 
-fn round_up(val: f32) -> f32 {
-    let shifted = val * 10.0;
-    shifted.round() / 10.0
-}
 
 #[embassy_executor::task]
 pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiver) {

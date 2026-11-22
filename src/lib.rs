@@ -6,6 +6,7 @@ use embassy_sync::{
     channel::{Channel, Receiver, Sender},
 };
 use embassy_time::Duration;
+use num_traits::float::FloatCore;
 
 pub mod http_server;
 pub mod network;
@@ -49,3 +50,7 @@ pub fn to_kpa(pressure: f32) -> f32 {
     pressure / 1000.0
 }
 
+pub fn round_up(val: f32) -> f32 {
+    let shifted = val * 10.0;
+    shifted.round() / 10.0
+}

@@ -18,7 +18,7 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
-use num_traits::float::FloatCore;
+
 use picoserve::{AppRouter, AppWithStateBuilder};
 
 use esp_hal::i2c::master::I2c;
@@ -28,7 +28,7 @@ use weather_station::network::network_tasks::connection_ap;
 use weather_station::network::network_tasks::net_task;
 use weather_station::sensors::dht11::Dht11;
 use weather_station::{NormalizedMeasurments, TheChannel, TheHumidityChannel, make_static, to_kpa};
-
+use weather_station::round_up;
 use defmt::{debug, info};
 
 const GW_IP_ADDR_ENV: Option<&'static str> = Some("192.168.1.1");
@@ -198,7 +198,3 @@ async fn main(spawner: Spawner) {
     }
 }
 
-fn round_up(val: f32) -> f32 {
-    let shifted = val * 10.0;
-    shifted.round() / 10.0
-}
