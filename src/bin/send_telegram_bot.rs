@@ -7,11 +7,11 @@ use core::fmt::Write;
 use bme280::i2c::AsyncBME280;
 
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
+use esp_hal::rng::{Trng, TrngSource};
 use esp_hal::time::Rate;
 use esp_hal::timer::OneShotTimer;
-use esp_radio::wifi::WifiController;
 use heapless::String;
-use reqwless::client::HttpClient;
+use reqwless::client::{HttpClient, TlsConfig};
 
 use embassy_executor::Spawner;
 use embassy_net::StackResources;
@@ -21,24 +21,23 @@ use esp_hal::gpio::{Flex, InputConfig, OutputConfig, Pull};
 use esp_hal::i2c;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
-use num_traits::float::FloatCore;
-
 use defmt::{debug, error, info, println};
 use embassy_net::dns::DnsSocket;
 use esp_hal::i2c::master::I2c;
 
-use reqwless::request::Method;
+use reqwless::headers::ContentType;
+use reqwless::request::{Method, RequestBuilder};
 
-use weather_station::network::network_tasks::net_task;
+use weather_station::network::network_tasks::{net_task, connection_sta};
 use weather_station::sensors::dht11::Dht11;
 use weather_station::{
-    HumiditySender, NormalizedMeasurments, ServerReceiver, TheChannel, TheHumidityChannel,
-    make_static, to_kpa,
+    NormalizedMeasurments, ServerReceiver, TheChannel, TheHumidityChannel, make_static, to_kpa,
 };
 
-const HUMIDITY_MEASURMENT_INTERVAL: Duration = Duration::from_millis(2250);
+use weather_station::round_up;
+
+
 const INTERVAL: Duration = Duration::from_millis(100);
-type Dht = Dht11<Flex<'static>>;
 
 use esp_alloc as _;
 use panic_rtt_target as _;
@@ -56,15 +55,27 @@ const PASSWORD: &str = match option_env!("PASSWORD") {
     None => "",
 };
 
-const WEBSITE: &str = match option_env!("WEBSITE") {
+const CHAT_ID: &str = match option_env!("CHAT_ID") {
     // http
     Some(pass) => pass,
     None => "",
 };
 
+
+const BOT_TOKEN: &str = match option_env!("BOT_TOKEN") {
+    // http
+    Some(pass) => pass,
+    None => "",
+};
+
+
+
 const REQUEST_INTERVAL: Option<&str> = option_env!("REQUEST_INTERVAL");
 
 const DEFAULT_REQUEST_INTERVAL: Duration = Duration::from_millis(2000);
+
+static CERT: &[u8] = include_bytes!("certs/telegram_ca.der");
+
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
@@ -75,7 +86,7 @@ async fn main(spawner: Spawner) {
     let peripherals = esp_hal::init(config);
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 64 * 1024);
-    esp_alloc::heap_allocator!(size: 36
+    esp_alloc::heap_allocator!(size: 96
          * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
@@ -145,7 +156,7 @@ async fn main(spawner: Spawner) {
     let mut bme280 = AsyncBME280::new_primary(i2c0);
     bme280.init(&mut delay).await.unwrap();
 
-    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(connection_sta(controller).unwrap());
     spawner.spawn(net_task(runner).unwrap());
     //spawner.spawn(weather_station::network::dhcp::run_dhcp(stack, GW_IP_ADDR_ENV).unwrap());
 
@@ -161,11 +172,25 @@ async fn main(spawner: Spawner) {
     let humidity_receiver = humidity_channel.receiver();
     let humidity_sender = humidity_channel.sender();
 
-    spawner.spawn(web_task(stack, server_receiver).unwrap());
+
+
+
+    let _trng_source = TrngSource::new(peripherals.RNG, peripherals.ADC1);
+    let trng = Trng::try_new().unwrap();
+    let trng:&mut Trng  = make_static!(Trng,trng);
+
+    spawner.spawn(web_task(stack, server_receiver,trng).unwrap());
 
     let timg1 = TimerGroup::new(peripherals.TIMG1);
     let one_shot = OneShotTimer::new(timg1.timer0).into_async(); // dedicated driver is more stable
-    spawner.spawn(measure_humidity(dht11, one_shot, humidity_sender).unwrap());
+    spawner.spawn(
+        weather_station::sensors::measure_humidity::measure_humidity(
+            dht11,
+            one_shot,
+            humidity_sender,
+        )
+        .unwrap(),
+    );
 
     let mut humidity = 0.0f32;
     loop {
@@ -194,36 +219,9 @@ async fn main(spawner: Spawner) {
     }
 }
 
-fn round_up(val: f32) -> f32 {
-    let shifted = val * 10.0;
-    shifted.round() / 10.0
-}
 
 #[embassy_executor::task]
-async fn measure_humidity(
-    mut dht11: Dht,
-    mut timer: OneShotTimer<'static, esp_hal::Async>,
-    sender: HumiditySender,
-) {
-    loop {
-        let humidity_and_temp = critical_section::with(|_| dht11.read(&mut timer)).await;
-
-        match humidity_and_temp {
-            Ok(humidity_and_temp) => {
-                debug!("humidity_and_temp: {}", humidity_and_temp);
-                sender.send(humidity_and_temp.humidity).await;
-            }
-
-            Err(e) => error!("humidity_and_temp: {:?}", e),
-        }
-        timer
-            .delay_millis_async(HUMIDITY_MEASURMENT_INTERVAL.as_millis() as u32)
-            .await;
-    }
-}
-
-#[embassy_executor::task]
-pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiver) {
+pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiver, rng: & 'static mut Trng) {
     let dns_client = DnsSocket::new(stack);
 
     let tcp_client = TcpClient::new(
@@ -234,12 +232,34 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
         ),
     );
 
-    let mut client = HttpClient::new(&tcp_client, &dns_client);
+    // Configure TLS (using TlsVerify::None for initial testing, or TlsVerify::Certificate)
+
+        
+  
+    let mbedtls_lib_instance = mbedtls_rs::Tls::new(rng).unwrap();
+    // For debug messages:
+    // mbedtls_lib_instance.set_debug(1);
+
+    let tls_config = TlsConfig::new(
+        reqwless::TlsVersion::Tls1_2,
+        reqwless::Certificate::new(reqwless::X509::DER(CERT)).unwrap(),
+        None, // optionally, add client certificate for mTLS
+        mbedtls_lib_instance.reference(),
+    );
+
+
+  
+    // 3. Create the HTTPS client and send the request
+    let mut client = HttpClient::new_with_tls(&tcp_client, &dns_client, tls_config);
+
+
+
     let mut rx_buffer = [0u8; 1024];
     let request_interval = REQUEST_INTERVAL
         .and_then(|t| t.parse::<u64>().ok().map(Duration::from_millis))
         .unwrap_or(DEFAULT_REQUEST_INTERVAL);
     let mut url = String::<200>::new();
+    write!(url, "https://api.telegram.org/bot{}/sendMessage", BOT_TOKEN).unwrap(); // todo handling errors
     loop {
         let measturments = receiver.receive().await;
         let temperature = measturments.temperature;
@@ -247,57 +267,47 @@ pub async fn web_task(stack: embassy_net::Stack<'static>, receiver: ServerReceiv
         let pressure = measturments.pressure;
         defmt::println!("{:?}", measturments);
 
-        update_value(&mut client, &mut rx_buffer, &mut url, temperature, 1).await;
-        url.clear();
-        update_value(&mut client, &mut rx_buffer, &mut url, humidity, 2).await;
-        url.clear();
-        update_value(&mut client, &mut rx_buffer, &mut url, pressure, 3).await;
-        url.clear();
+        update_value(&mut client, &mut rx_buffer, &mut url, temperature, "Temperature","*C").await;
+        update_value(&mut client, &mut rx_buffer, &mut url, humidity, "Humidity","%").await;
+        update_value(&mut client, &mut rx_buffer, &mut url, pressure, "Atospheric pressure","kPa").await;
 
         Timer::after(request_interval).await;
     }
 }
 
-#[embassy_executor::task]
-async fn connection(mut controller: WifiController<'static>) {
-    println!("start connection task");
 
-    loop {
-        println!("About to connect...");
-
-        match controller.connect_async().await {
-            Ok(info) => {
-                println!("Wifi connected to {:?}", info);
-
-                // wait until we're no longer connected
-                let info = controller.wait_for_disconnect_async().await.ok();
-                println!("Disconnected: {:?}", info);
-            }
-            Err(e) => {
-                println!("Failed to connect to wifi: {:?}", e);
-            }
-        }
-
-        Timer::after(Duration::from_millis(5000)).await
-    }
-}
 
 async fn update_value<'a, T, D, const N: usize>(
     client: &mut HttpClient<'a, T, D>,
     rx_buffer: &mut [u8],
     url: &mut String<N>,
     value: f32,
-    idx: u32,
+    label: &str,
+    unit :&str,
 ) where
     T: embedded_nal_async::TcpConnect + 'a,
     D: embedded_nal_async::Dns + 'a,
 {
-    write!(url, "{}/update/{}/{}", WEBSITE, idx, value,).unwrap();
-    let sending_result = client.request(Method::POST, url).await;
+
+
+    let mut payload = String::<256>::new();
+    write!(
+        payload,
+        r#"{{"chat_id":"{}","text":"{}: {:.2} {}"}}"#,
+        CHAT_ID, label, value, unit
+    )
+    .unwrap();
+
+    let sending_result = client.request(Method::POST, url)
+    .await;
     match sending_result {
-        Ok(mut reqwest) => {
+        Ok( reqwest) => {
+            let  reqwest =  reqwest.content_type(ContentType::ApplicationJson);
+            let mut    reqwest = reqwest.body(payload.as_str().as_bytes());
             println!("HTTP request successful");
-            if let Ok(response) = reqwest.send(rx_buffer).await {
+            if let Ok(response) = reqwest.send(rx_buffer)
+            
+            .await {
                 println!("sended");
                 println!("Response:");
                 let body = response.body().body_buf;
@@ -306,7 +316,7 @@ async fn update_value<'a, T, D, const N: usize>(
             }
         }
         Err(e) => {
-            println!("try again {}", e);
+            error!("try again {}", e);
         }
     }
 }
