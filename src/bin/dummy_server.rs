@@ -26,7 +26,7 @@ use esp_println::println;
 use picoserve::{AppBuilder, AppRouter, routing::get};
 use weather_station::make_static;
 use weather_station::network::dhcp::run_dhcp;
-use weather_station::network::network_tasks::connection;
+use weather_station::network::network_tasks::connection_ap;
 use weather_station::network::network_tasks::net_task;
 
 struct AppProps;
@@ -90,7 +90,7 @@ async fn main(spawner: Spawner) {
         seed,
     );
 
-    spawner.spawn(connection(controller).unwrap());
+    spawner.spawn(connection_ap(controller).unwrap());
     spawner.spawn(net_task(runner).unwrap());
     spawner.spawn(run_dhcp(stack, gw_ip_addr_str).unwrap());
 
