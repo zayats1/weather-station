@@ -81,8 +81,7 @@ async fn main(spawner: Spawner) {
     let peripherals = esp_hal::init(config);
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 64 * 1024);
-    esp_alloc::heap_allocator!(size: 96
-         * 1024);
+    esp_alloc::heap_allocator!(size: 96 * 1024);   // more ram for TLS
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
 
