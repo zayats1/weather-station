@@ -36,7 +36,13 @@ use weather_station::{
 
 use weather_station::round_up;
 
-const INTERVAL: Duration = Duration::from_millis(5000);
+const INTERVAL: Duration = Duration::from_millis(200);
+
+const REQUEST_INTERVAL: Option<&str> = option_env!("REQUEST_INTERVAL");
+
+const DEFAULT_REQUEST_INTERVAL: Duration = Duration::from_millis(5000);
+
+static CERT: &[u8] = include_bytes!("certs/telegram_ca.der");
 
 use esp_alloc as _;
 use panic_rtt_target as _;
@@ -66,12 +72,6 @@ const BOT_TOKEN: &str = match option_env!("BOT_TOKEN") {
     None => "",
 };
 
-const REQUEST_INTERVAL: Option<&str> = option_env!("REQUEST_INTERVAL");
-
-const DEFAULT_REQUEST_INTERVAL: Duration = Duration::from_millis(2000);
-
-static CERT: &[u8] = include_bytes!("certs/telegram_ca.der");
-
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
     rtt_target::rtt_init_defmt!();
@@ -81,7 +81,7 @@ async fn main(spawner: Spawner) {
     let peripherals = esp_hal::init(config);
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 64 * 1024);
-    esp_alloc::heap_allocator!(size: 96 * 1024);   // more ram for TLS
+    esp_alloc::heap_allocator!(size: 96 * 1024); // more ram for TLS
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
 
@@ -278,7 +278,7 @@ pub async fn web_task(
             &mut rx_buffer,
             &mut url,
             pressure,
-            "Atospheric pressure",
+            "Atmospheric pressure",
             "kPa",
         )
         .await;
